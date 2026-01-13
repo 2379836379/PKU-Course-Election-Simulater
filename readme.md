@@ -1,7 +1,7 @@
 # 模拟选课系统（Streamlit）
 
 一个基于 Streamlit 的“模拟选课 + 课表展示”小应用。
-[网页版](course.editlife.cn)
+[网页版](https://course.editlife.cn)
 
 ## 环境依赖
 - Python 3
