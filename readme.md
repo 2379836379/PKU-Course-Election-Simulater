@@ -1,31 +1,29 @@
-﻿# 模拟选课系统（Streamlit）
+﻿# Mock Course Selection App (Streamlit)
 
-一个基于 Streamlit 的“模拟选课 + 课表展示”小应用。
-[网页版](https://course.editlife.cn)(已502，后续修复)
+A small Streamlit app for **mock course selection + timetable visualization**.
 
-可将此仓库直接交给agent启动。
-
-## 环境依赖
+## Requirements
 - Python 3
-- 安装依赖：`pip install -r requirements.txt`
+- Install dependencies: `pip install -r requirements.txt`
 
-## 快速开始
+## Quick Start
 
-建议直接在 `PKU-Course-Election/` 目录下运行（`app.py` 会用相对路径读取 `courses.parquet`）。
+It is recommended to run everything inside `PKU-Course-Election/` (the app reads `courses.parquet` via a relative path).
 
-1. 准备数据（推荐）：把 `课表信息汇总.xlsx` 放到 `PKU-Course-Election/` 目录，并转换生成 `courses.parquet`
+1. Prepare data (recommended): put `test.xlsx` under `PKU-Course-Election/` and convert it to `courses.parquet`:
    - `python .\\convert_data.py`
-   - 或从仓库根目录运行：`python .\\PKU-Course-Election\\convert_data.py`
-2. 启动应用：
+   - Or from the repo root: `python .\\PKU-Course-Election\\convert_data.py`
+2. Start the app:
    - `cd .\\PKU-Course-Election`
    - `streamlit run app.py`
 
-如果 `PKU-Course-Election/` 目录没有 `courses.parquet`，应用启动后会提示缺失，并提供“生成示例数据”的按钮（会写出 `courses.parquet`）。
+If `PKU-Course-Election/` does not contain `courses.parquet`, the app will warn you and provide a **Generate Sample Data** button (it will write `courses.parquet`).
 
-## 数据准备（Excel → Parquet）
+## Data Prep (Excel → Parquet)
 
-### 必需列
-Excel 文件名固定为 `课表信息汇总.xlsx`（放在项目根目录）。至少需要包含：
+### Required Columns
+By default, the converter reads `test.xlsx` from the **current working directory** (you can also pass `--excel`).
+The Excel file must contain at least these columns:
 - `课程号`
 - `班号`
 - `院系`
@@ -35,64 +33,60 @@ Excel 文件名固定为 `课表信息汇总.xlsx`（放在项目根目录）。
 - `上课时间`
 - `修读对象`
 
-### 可选列
-Excel 中存在则会原样保留到 `courses.parquet`：
-- `学年学期`、`表格类型`、`内部学期`、`课程英文名`、`课程类别`、`周学时`、`总学时`、`起止周`、`备注`
+### Optional Columns
+If present, these columns are preserved as-is in `courses.parquet`:
+- `学年学期`, `表格类型`, `内部学期`, `课程英文名`, `课程类别`, `周学时`, `总学时`, `起止周`, `备注`
 
-### `上课时间` 字段格式
-应用用于“冲突检测 / 课表渲染 / 筛选”的解析规则如下：
-- 基本格式：`周X起始-结束`
-  - 示例：`周一1-2`
-- 单双周：在末尾追加 `单` 或 `双`
-  - 示例：`周二1-2单`、`周三3-4双`
-- 多时段：使用中文逗号 `，` 分隔多个时段
-  - 示例：`周一1-2，周三3-4`
+### `上课时间` Format
+The app parses this field for **conflict detection / timetable rendering / filtering**:
+- Basic format: `周X起始-结束`
+  - Example: `周一1-2`
+- Odd/even weeks: append `单` or `双`
+  - Example: `周二1-2单`, `周三3-4双`
+- Multiple slots: separated by Chinese comma `，`
+  - Example: `周一1-2，周三3-4`
 
-## 转换脚本说明（`convert_data.py`）
-运行 `python convert_data.py` 会：
-- 读取 `课表信息汇总.xlsx`
-- 按 `课程号 + 班号` 分组去重
-  - 如果同一门课出现多行，`修读对象` 会去重后用 `，` 连接合并
-  - 其他字段以该组第一条记录为准
-- 输出 `courses.parquet`（snappy 压缩）
+## Converter (`convert_data.py`)
+Running `python convert_data.py` will:
+- Read `test.xlsx`
+- Deduplicate by `课程号 + 班号`
+  - If the same course appears in multiple rows, `修读对象` will be de-duplicated and joined by `，`
+  - Other fields use the first row in the group
+- Write `courses.parquet` (snappy compression)
 
-## 功能说明（`app.py`）
+## App Features (`app.py`)
 
-### 筛选与搜索
-侧边栏 `Filters` 支持：
-- 按院系筛选
-- 按星期筛选（多选：周一到周日）
-- 按节次筛选（起始节次 / 结束节次，均为数字，范围 1–12）
+### Browse / Filter / Search
+Sidebar **Filters**:
+- Filter by `院系`
+- Filter by weekday (multi-select: Mon–Sun)
+- Filter by period range (start/end periods, 1–12)
 
-搜索框支持：
-- 空格分割的多关键词匹配：`关键词1 关键词2 ...`
-- 匹配范围：`课程名` + `授课教师`
-- 逻辑：每个关键词都必须出现，但可以出现在“课程名或老师名”任一字段中
-  - 例：输入 `数据 张`，会匹配“包含 数据”且“包含 张”的课程（允许分别命中课程名/老师名）
+Search:
+- Space-separated keywords: `kw1 kw2 ...`
+- Matches within: `课程名` + `授课教师`
+- Logic: every keyword must match, but can match either field
 
-### 选课与冲突检测（新增预选池）
-- 在“选课”页点击课程卡片右侧“加入预选”，课程会进入“预选池”（此时不做冲突检测）
-- 在“预选池/课表”页（顶部显示课表）点击“加入课表”，才会执行冲突检测并加入课表
-- 冲突判定：
-  - 同一天，节次区间有重叠
-  - 周类型有交集（`单` vs `双` 视为不冲突；`每周` 与任意周类型视为有交集）
+### Preselection Pool + Timetable
+The app uses a two-step workflow:
+- On the **Browse Courses** page, click **Preselect** to add a course into the **preselection pool** (no conflict check at this stage).
+- On the **Preselection + Timetable** page (timetable shown at the top), click **Add to Timetable** to run conflict detection and add it to the timetable.
 
-### 学分统计
-- 根据学位类型展示学分上限：
-  - 单学位：25
-  - 双学位：30
-- 超出上限会显示警告提示（不强制阻止选课）
+Conflict rules:
+- Same day + overlapping periods
+- Week type overlaps (odd vs even is NOT a conflict; “every week” conflicts with anything)
 
-### 课表展示与导出
-- 课表固定为 周一到周日，节次 1–12
-- 支持导出 Excel：
-  - 课程表工作表
-  - 已选课程工作表（包含已选课程的完整字段）
+### Credits
+- Single degree: max 25
+- Double degree: max 30
+- Exceeding the limit shows a warning (does not block selection)
 
-### 缓存与性能
-- 数据加载使用缓存（可在侧边栏点击“清除缓存”）
-- 为节省内存，课程时间解析结果不会预先写入数据表，而是在选课时按需解析并缓存到已选课程里
+### Timetable Export
+- Fixed timetable layout: Mon–Sun, periods 1–12
+- Export to Excel:
+  - Timetable sheet
+  - Selected courses sheet (full fields)
 
-(readme是g老师写的)
-
-
+### Cache / Performance
+- Data loading is cached (sidebar has **Clear Cache**)
+- To save memory, time parsing is computed on-demand and cached per selected course

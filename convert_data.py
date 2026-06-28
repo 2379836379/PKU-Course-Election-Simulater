@@ -6,9 +6,9 @@
 用法示例（Windows / PowerShell）：
   python ./PKU-Course-Election/convert_data.py
   py -3 ./PKU-Course-Election/convert_data.py
-  python ./PKU-Course-Election/convert_data.py --excel ./PKU-Course-Election/课表信息汇总.xlsx --out ./PKU-Course-Election/courses.parquet
+  python ./PKU-Course-Election/convert_data.py --excel ./test.xlsx --out ./courses.parquet
 
-说明：脚本默认按“脚本所在目录”解析输入/输出路径，因此可从仓库根目录直接运行。
+说明：脚本默认读取“当前工作目录”下的 test.xlsx，并在当前工作目录输出 courses.parquet；也可以用参数指定路径。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ def convert_excel_to_parquet(excel_file: Path, parquet_file: Path) -> bool:
 
     if not excel_file.exists():
         print(f"错误: 找不到文件 {excel_file}")
-        print("提示: 默认按脚本所在目录查找输入文件；也可以用 --excel 指定路径。")
+        print("提示: 默认按当前工作目录查找 test.xlsx；也可以用 --excel 指定路径。")
         return False
 
     try:
@@ -73,7 +73,7 @@ def convert_excel_to_parquet(excel_file: Path, parquet_file: Path) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    base_dir = Path(__file__).resolve().parent
+    base_dir = Path.cwd()
 
     parser = argparse.ArgumentParser(
         description="CourseElection 数据格式转换工具（Excel -> Parquet）"
@@ -81,14 +81,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--excel",
         type=Path,
-        default=base_dir / "课表信息汇总.xlsx",
-        help="输入 Excel 路径（默认：脚本所在目录下的 课表信息汇总.xlsx）",
+        default=base_dir / "test.xlsx",
+        help="输入 Excel 路径（默认：当前工作目录下的 test.xlsx）",
     )
     parser.add_argument(
         "--out",
         type=Path,
         default=base_dir / "courses.parquet",
-        help="输出 Parquet 路径（默认：脚本所在目录下的 courses.parquet）",
+        help="输出 Parquet 路径（默认：当前工作目录下的 courses.parquet）",
     )
     return parser.parse_args()
 
@@ -106,3 +106,4 @@ if __name__ == "__main__":
         print("\n下次启动应用时将自动使用 Parquet 格式，加载速度更快！")
     else:
         print("\n转换失败，请检查错误信息")
+
