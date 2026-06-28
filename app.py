@@ -706,11 +706,6 @@ def main():
 
     def cancel_to_preselect(key: tuple[str, str]) -> None:
         # Move a course from timetable (selected) back to the preselection pool.
-        st.session_state.cancel_clicks = int(st.session_state.get("cancel_clicks", 0)) + 1
-
-        before_pool = len(st.session_state.preselected_courses)
-        before_sel = len(st.session_state.selected_courses)
-
         removed = None
         for i, c in enumerate(list(st.session_state.selected_courses)):
             if course_key(c) == key:
@@ -720,15 +715,6 @@ def main():
                 break
 
         if removed is None:
-            st.session_state.last_cancel_debug = {
-                "key": [key[0], key[1]],
-                "status": "not_found_in_selected",
-                "before_pool": before_pool,
-                "after_pool": len(st.session_state.preselected_courses),
-                "before_selected": before_sel,
-                "after_selected": len(st.session_state.selected_courses),
-                "cancel_clicks": st.session_state.cancel_clicks,
-            }
             return
 
         remove_from_list(st.session_state.preselected_courses, key)
@@ -737,15 +723,6 @@ def main():
         st.session_state.timetable_cache = None
         st.session_state.timetable_courses_hash = None
         st.session_state.last_moved_back = removed
-        st.session_state.last_cancel_debug = {
-            "key": [key[0], key[1]],
-            "status": "moved",
-            "before_pool": before_pool,
-            "after_pool": len(st.session_state.preselected_courses),
-            "before_selected": before_sel,
-            "after_selected": len(st.session_state.selected_courses),
-            "cancel_clicks": st.session_state.cancel_clicks,
-        }
 
 
     def render_courses_view() -> None:
@@ -898,25 +875,6 @@ def main():
                     else f"Moved {moved_back.get('课程名', '')} ({moved_back.get('课程号', '')}) back to preselection"
                 )
             )
-
-        err = st.session_state.pop("last_cancel_error", None)
-        if err:
-            st.error(f"Cancel callback error: {err}")
-
-        dbg = st.session_state.get("last_cancel_debug")
-        show_debug = st.checkbox("Show debug", value=False, key="show_debug")
-        st.caption(f"cancel_clicks: {int(st.session_state.get('cancel_clicks', 0))}")
-        st.caption(f"cancel_button_hits: {int(st.session_state.get('cancel_button_hits', 0))}")
-        st.caption(f"last_cancel_button_key: {st.session_state.get('last_cancel_button_key')}")
-        if show_debug:
-            st.json(dbg or {"info": "No cancel debug captured yet."})
-        st.session_state.render_seq = int(st.session_state.get('render_seq', 0)) + 1
-        st.caption(f"render_seq: {int(st.session_state.get('render_seq', 0))}")
-
-        if st.button("Debug: test button", key="debug_test_button"):
-            st.session_state.debug_test_hits = int(st.session_state.get('debug_test_hits', 0)) + 1
-        st.caption(f"debug_test_hits: {int(st.session_state.get('debug_test_hits', 0))}")
-
 
         timetable_header_bg = "var(--secondary-background-color)"
         timetable_header_fg = "var(--text-color)"
@@ -1166,10 +1124,6 @@ def main():
                             use_container_width=True,
                             type="primary",
                         ):
-                            st.session_state.cancel_button_hits = int(
-                                st.session_state.get("cancel_button_hits", 0)
-                            ) + 1
-                            st.session_state.last_cancel_button_key = [key[0], key[1]]
                             cancel_to_preselect(key)
                             st.rerun()
 
@@ -1354,8 +1308,6 @@ def main():
                             use_container_width=True,
                             type="primary",
                         ):
-                            st.session_state.cancel_button_hits = int(st.session_state.get('cancel_button_hits', 0)) + 1
-                            st.session_state.last_cancel_button_key = [key[0], key[1]]
                             cancel_to_preselect(key)
                             st.rerun()
 
