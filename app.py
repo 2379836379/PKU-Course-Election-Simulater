@@ -99,7 +99,7 @@ LANGUAGES = {
         "import_partial": "Some courses were not found",
         "nav": "Navigation",
         "nav_courses": "Browse Courses",
-        "nav_preselect": "Preselection Pool",
+        "nav_preselect": "Preselection + Timetable",
         "nav_timetable": "Timetable",
         "preselected_courses": "Preselected Courses",
         "add_to_preselect": "Preselect",
@@ -168,7 +168,7 @@ LANGUAGES = {
         "import_partial": "部分课程未找到",
         "nav": "页面",
         "nav_courses": "选课",
-        "nav_preselect": "预选池",
+        "nav_preselect": "预选池/课表",
         "nav_timetable": "课表",
         "preselected_courses": "预选课程",
         "add_to_preselect": "加入预选",
@@ -644,12 +644,8 @@ def main():
     # Navigation
     nav = st.sidebar.radio(
         lang.get("nav", "Navigation"),
-        options=["courses", "preselect", "timetable"],
-        format_func=lambda x: (
-            lang["nav_courses"]
-            if x == "courses"
-            else (lang["nav_preselect"] if x == "preselect" else lang["nav_timetable"])
-        ),
+        options=["courses", "preselect"],
+        format_func=lambda x: (lang["nav_courses"] if x == "courses" else lang["nav_preselect"]),
     )
 
     # Degree type (affects credit warning)
@@ -844,34 +840,262 @@ def main():
                         st.caption(lang.get("already_in_pool", "Already in pool"))
 
     def render_preselect_view() -> None:
-        st.subheader(lang.get("preselected_courses", "Preselected Courses"))
+        # Timetable first (top of the page)
+        st.subheader(lang["timetable"])
 
+        timetable_header_bg = "var(--secondary-background-color)"
+        timetable_header_fg = "var(--text-color)"
+
+        day_names = {
+            "mon": lang["week_mon"],
+            "tue": lang["week_tue"],
+            "wed": lang["week_wed"],
+            "thu": lang["week_thu"],
+            "fri": lang["week_fri"],
+            "sat": lang["week_sat"],
+            "sun": lang["week_sun"],
+        }
+        days_list = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+        if st.session_state.selected_courses:
+            courses_hash = hash(
+                str([(c.get("课程号"), c.get("班号")) for c in st.session_state.selected_courses])
+            )
+            if (
+                st.session_state.timetable_courses_hash == courses_hash
+                and st.session_state.timetable_cache is not None
+            ):
+                timetable, _day_names = st.session_state.timetable_cache
+            else:
+                timetable, _day_names = create_timetable(st.session_state.selected_courses, lang)
+                st.session_state.timetable_cache = (timetable, _day_names)
+                st.session_state.timetable_courses_hash = courses_hash
+
+            timetable_data_for_df = {}
+            for day in days_list:
+                day_col = []
+                for period in range(1, 13):
+                    courses = timetable[day][period]
+                    if courses:
+                        text_parts = []
+                        for c in courses:
+                            info = c["course"]
+                            if c["week"] == "odd":
+                                info += " (单)" if language == "zh" else " (Odd)"
+                            elif c["week"] == "even":
+                                info += " (双)" if language == "zh" else " (Even)"
+                            text_parts.append(info)
+                        day_col.append("\n".join(text_parts))
+                    else:
+                        day_col.append("")
+                timetable_data_for_df[day_names[day]] = day_col
+
+            df_tt = pd.DataFrame(timetable_data_for_df, index=range(1, 13))
+        else:
+            df_tt = pd.DataFrame(
+                {day_names[d]: [""] * 12 for d in days_list}, index=range(1, 13)
+            )
+
+        def color_courses(val):
+            if val and str(val).strip() != "":
+                return "background-color: rgba(28, 131, 225, 0.2); border-radius: 4px; font-weight: bold; color: inherit;"
+            return ""
+
+        styled_df = (
+            df_tt.style.map(color_courses)
+            .set_properties(
+                **{
+                    "height": "65px",
+                    "vertical-align": "middle",
+                    "text-align": "center",
+                    "white-space": "pre-wrap",
+                    "border": "1px solid #444" if language == "zh" else "1px solid #ddd",
+                }
+            )
+            .set_table_styles(
+                [
+                    {
+                        "selector": "table",
+                        "props": [
+                            ("width", "100%"),
+                            ("table-layout", "fixed"),
+                            ("border-collapse", "collapse"),
+                        ],
+                    },
+                    {
+                        "selector": "th",
+                        "props": [
+                            ("background-color", timetable_header_bg),
+                            ("color", timetable_header_fg),
+                            ("text-align", "center"),
+                            ("vertical-align", "middle"),
+                        ],
+                    },
+                    {"selector": "td, th", "props": [("box-sizing", "border-box")]},
+                ]
+            )
+        )
+
+        st.markdown(
+            f"""
+<style>
+.timetable-wrapper table {{
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+}}
+.timetable-wrapper th:first-child,
+.timetable-wrapper td:first-child {{
+    width: 6% !important;
+}}
+.timetable-wrapper th:not(:first-child),
+.timetable-wrapper td:not(:first-child) {{
+    width: 13.4% !important;
+}}
+.timetable-wrapper td, .timetable-wrapper th {{
+    text-align: center !important;
+    vertical-align: middle !important;
+}}
+</style>
+<div class="timetable-wrapper">{styled_df.to_html()}</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+        excel_data = export_timetable_to_excel(st.session_state.selected_courses, lang)
+        if excel_data:
+            st.download_button(
+                label=lang["export_timetable"],
+                data=excel_data,
+                file_name="课程表.xlsx" if language == "zh" else "timetable.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+        st.divider()
+
+        # Preselection pool (below timetable)
+        st.subheader(lang.get("preselected_courses", "Preselected Courses"))
         pool = st.session_state.preselected_courses
         if not pool:
-            st.info("预选池为空。请先在“选课”页将课程加入预选池。" if language == "zh" else "Preselection pool is empty. Add courses from the Browse page.")
-            return
+            st.info(
+                "预选池为空。请先在“选课”页将课程加入预选池。"
+                if language == "zh"
+                else "Preselection pool is empty. Add courses from the Browse page."
+            )
+        else:
+            for idx, course in enumerate(list(pool)):
+                key = course_key(course)
+                with st.container(border=True):
+                    c_info, c_action = st.columns([4, 2], vertical_alignment="center")
+                    with c_info:
+                        st.markdown(
+                            f"**{course.get('课程名','')}** <span style='color:grey; font-size:0.9em'>({course.get('课程号','')})</span>",
+                            unsafe_allow_html=True,
+                        )
+                        meta_text = (
+                            f"教师：{course.get('授课教师','')}  |  院系：{course.get('院系','')}  |  学分：{course.get('参考学分','')}  |  时间：{course.get('上课时间','')}"
+                        )
+                        st.caption(meta_text)
 
-        for idx, course in enumerate(list(pool)):
-            key = course_key(course)
-            with st.container(border=True):
-                c_info, c_action = st.columns([4, 2], vertical_alignment="center")
-                with c_info:
-                    st.markdown(
-                        f"**{course.get('课程名','')}** <span style='color:grey; font-size:0.9em'>({course.get('课程号','')})</span>",
-                        unsafe_allow_html=True,
-                    )
-                    meta_text = f"教师：{course.get('授课教师','')}  |  院系：{course.get('院系','')}  |  学分：{course.get('参考学分','')}  |  时间：{course.get('上课时间','')}"
-                    st.caption(meta_text)
+                    with c_action:
+                        b1, b2 = st.columns(2)
+                        with b1:
+                            if st.button(
+                                lang.get("add_to_timetable", "Add to Timetable"),
+                                key=f"to_tt_{idx}_{key[0]}_{key[1]}",
+                                use_container_width=True,
+                            ):
+                                move_to_timetable(course)
+                        with b2:
+                            if st.button(
+                                lang.get("remove", "Remove"),
+                                key=f"rm_pre_{idx}_{key[0]}_{key[1]}",
+                                use_container_width=True,
+                                type="secondary",
+                            ):
+                                remove_from_list(st.session_state.preselected_courses, key)
+                                st.rerun()
 
-                with c_action:
-                    b1, b2 = st.columns(2)
-                    with b1:
-                        if st.button(lang.get("add_to_timetable", "Add to Timetable"), key=f"to_tt_{idx}_{key[0]}_{key[1]}", use_container_width=True):
-                            move_to_timetable(course)
-                    with b2:
-                        if st.button(lang.get("remove", "Remove"), key=f"rm_pre_{idx}_{key[0]}_{key[1]}", use_container_width=True, type="secondary"):
-                            remove_from_list(st.session_state.preselected_courses, key)
+        st.divider()
+
+        # Credits + backup/restore + selected list
+        st.subheader(f"{lang['current_credits']}: {current_credits} / {lang['max_credits']}: {max_credits}")
+        if current_credits > max_credits:
+            st.markdown(
+                f"""
+                <div style="
+                    background-color: rgba(255, 75, 75, 0.1);
+                    color: rgb(163, 6, 6);
+                    padding: 20px;
+                    border-radius: 0.5rem;
+                    border: 1px solid rgba(255, 75, 75, 0.2);
+                    text-align: center;
+                    margin-top: 10px;
+                    margin-bottom: 10px;">
+                    ⚠️ {lang['warning']}: {lang['credit_exceeded']}
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.subheader(lang["backup_restore"])
+        selected_json = export_selected_courses_json(st.session_state.selected_courses)
+        st.download_button(
+            label=lang["export_selected_json"],
+            data=selected_json,
+            file_name="已选课程.json" if language == "zh" else "selected_courses.json",
+            mime="application/json",
+        )
+        uploaded_json = st.file_uploader(
+            label=lang["import_selected_json"],
+            type=["json"],
+            key="selected_courses_json_uploader",
+        )
+        if uploaded_json is not None:
+            raw = uploaded_json.getvalue()
+            sig = hashlib.sha256(raw).hexdigest()
+            if st.session_state.get("selected_courses_import_sig") != sig:
+                st.session_state.selected_courses_import_sig = sig
+                restored, missing = import_selected_courses_json(df, raw)
+                if restored is None:
+                    st.toast(lang["import_invalid_json"], icon="⚠️")
+                else:
+                    st.session_state.selected_courses = restored
+                    st.session_state.timetable_cache = None
+                    st.session_state.timetable_courses_hash = None
+                    st.toast(f"✅ {lang['import_done']}: {len(restored)}", icon="🎉")
+                    if missing:
+                        st.toast(f"⚠️ {lang['import_partial']}: {len(missing)}", icon="⚠️")
+                    st.rerun()
+
+        if st.session_state.selected_courses:
+            st.subheader(lang["selected_courses"])
+            for idx, course in enumerate(list(st.session_state.selected_courses)):
+                key = course_key(course)
+                with st.container(border=True):
+                    c_info, c_action = st.columns([4, 1], vertical_alignment="center")
+                    with c_info:
+                        st.markdown(
+                            f"**{course.get('课程名','')}** <span style='color:grey; font-size:0.9em'>({course.get('课程号','')})</span>",
+                            unsafe_allow_html=True,
+                        )
+                        meta_text = (
+                            f"教师：{course.get('授课教师','')}  |  院系：{course.get('院系','')}  |  学分：{course.get('参考学分','')}  |  时间：{course.get('上课时间','')}"
+                        )
+                        st.caption(meta_text)
+
+                    with c_action:
+                        if st.button(
+                            lang["cancel"],
+                            key=f"cancel_{idx}_{key[0]}_{key[1]}",
+                            use_container_width=True,
+                            type="primary",
+                        ):
+                            remove_from_list(st.session_state.selected_courses, key)
+                            st.session_state.timetable_cache = None
+                            st.session_state.timetable_courses_hash = None
                             st.rerun()
+
 
     def render_timetable_view() -> None:
         st.subheader(lang["timetable"])
@@ -1051,13 +1275,10 @@ def main():
                             st.session_state.timetable_cache = None
                             st.session_state.timetable_courses_hash = None
                             st.rerun()
-
     if nav == "courses":
         render_courses_view()
-    elif nav == "preselect":
-        render_preselect_view()
     else:
-        render_timetable_view()
+        render_preselect_view()
 
 
 if __name__ == "__main__":
