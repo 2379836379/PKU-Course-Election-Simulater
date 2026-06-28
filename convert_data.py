@@ -1,77 +1,108 @@
-#!/usr/bin/env python3
-"""
-数据格式转换工具
-将Excel格式转换为Parquet格式以提升读取速度
+﻿#!/usr/bin/env python3
+"""数据格式转换工具
+
+将 Excel 课表数据转换为 Parquet（默认 snappy 压缩），以提升读取速度。
+
+用法示例（Windows / PowerShell）：
+  python ./PKU-Course-Election/convert_data.py
+  py -3 ./PKU-Course-Election/convert_data.py
+  python ./PKU-Course-Election/convert_data.py --excel ./PKU-Course-Election/课表信息汇总.xlsx --out ./PKU-Course-Election/courses.parquet
+
+说明：脚本默认按“脚本所在目录”解析输入/输出路径，因此可从仓库根目录直接运行。
 """
 
-import pandas as pd
-import os
+from __future__ import annotations
+
+import argparse
 from pathlib import Path
 
-def convert_excel_to_parquet():
-    """将Excel课程数据转换为Parquet格式"""
-    
-    excel_file = "课表信息汇总.xlsx"
-    parquet_file = "courses.parquet"
-    
+import pandas as pd
+
+
+def convert_excel_to_parquet(excel_file: Path, parquet_file: Path) -> bool:
     print(f"正在读取 {excel_file}...")
-    
-    if not os.path.exists(excel_file):
+
+    if not excel_file.exists():
         print(f"错误: 找不到文件 {excel_file}")
+        print("提示: 默认按脚本所在目录查找输入文件；也可以用 --excel 指定路径。")
         return False
-    
+
     try:
-        # 读取Excel文件
         df = pd.read_excel(excel_file)
-        print(f"✓ 成功读取 {len(df)} 条原始记录")
-        
-        # 预处理：合并相同课程号+班号的记录
+        print(f"成功读取 {len(df)} 条原始记录")
+
+        required_cols = {"课程号", "班号", "修读对象"}
+        missing_cols = required_cols - {str(c) for c in df.columns}
+        if missing_cols:
+            print(f"错误: Excel 缺少必要列: {', '.join(sorted(missing_cols))}")
+            print(f"当前表头: {list(df.columns)}")
+            return False
+
         print("正在处理数据...")
-        grouped = df.groupby(['课程号', '班号'], as_index=False)
-        
-        processed_data = []
+        grouped = df.groupby(["课程号", "班号"], as_index=False)
+
+        processed_rows = []
         for _, group in grouped:
-            # 获取第一行作为基础
             row = group.iloc[0].copy()
-            
-            # 合并修读对象
             if len(group) > 1:
-                row['修读对象'] = '，'.join(group['修读对象'].astype(str).unique())
-            
-            processed_data.append(row)
-        
-        result_df = pd.DataFrame(processed_data)
-        print(f"✓ 处理完成，共 {len(result_df)} 条课程记录")
-        
-        # 保存为Parquet格式
+                row["修读对象"] = "，".join(group["修读对象"].astype(str).unique())
+            processed_rows.append(row)
+
+        result_df = pd.DataFrame(processed_rows)
+        print(f"处理完成，共 {len(result_df)} 条课程记录")
+
+        parquet_file.parent.mkdir(parents=True, exist_ok=True)
         print(f"正在保存为 {parquet_file}...")
-        result_df.to_parquet(parquet_file, compression='snappy', index=False)
-        
-        # 获取文件大小对比
-        excel_size = os.path.getsize(excel_file) / (1024 * 1024)  # MB
-        parquet_size = os.path.getsize(parquet_file) / (1024 * 1024)  # MB
-        
-        print(f"\n✓ 转换成功!")
-        print(f"  Excel文件大小:   {excel_size:.2f} MB")
-        print(f"  Parquet文件大小: {parquet_size:.2f} MB")
-        print(f"  空间节省:        {((excel_size - parquet_size) / excel_size * 100):.1f}%")
-        print(f"\n预期读取速度提升: 5-10倍")
-        
+        result_df.to_parquet(parquet_file, compression="snappy", index=False)
+
+        excel_size = excel_file.stat().st_size / (1024 * 1024)
+        parquet_size = parquet_file.stat().st_size / (1024 * 1024)
+
+        print("\n转换成功!")
+        print(f"  Excel 文件大小:   {excel_size:.2f} MB")
+        print(f"  Parquet 文件大小: {parquet_size:.2f} MB")
+        if excel_size > 0:
+            print(f"  空间节省:        {((excel_size - parquet_size) / excel_size * 100):.1f}%")
+        print("\n预计读取速度提升: 5-10 倍")
+
         return True
-        
+
     except Exception as e:
-        print(f"错误: 转换失败 - {str(e)}")
+        print(f"错误: 转换失败 - {e}")
         return False
+
+
+def parse_args() -> argparse.Namespace:
+    base_dir = Path(__file__).resolve().parent
+
+    parser = argparse.ArgumentParser(
+        description="CourseElection 数据格式转换工具（Excel -> Parquet）"
+    )
+    parser.add_argument(
+        "--excel",
+        type=Path,
+        default=base_dir / "课表信息汇总.xlsx",
+        help="输入 Excel 路径（默认：脚本所在目录下的 课表信息汇总.xlsx）",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=base_dir / "courses.parquet",
+        help="输出 Parquet 路径（默认：脚本所在目录下的 courses.parquet）",
+    )
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
     print("=" * 60)
     print("CourseElection 数据格式转换工具")
     print("=" * 60)
     print()
-    
-    success = convert_excel_to_parquet()
-    
+
+    args = parse_args()
+    success = convert_excel_to_parquet(args.excel, args.out)
+
     if success:
-        print("\n下次启动应用时将自动使用Parquet格式，加载速度更快！")
+        print("\n下次启动应用时将自动使用 Parquet 格式，加载速度更快！")
     else:
         print("\n转换失败，请检查错误信息")

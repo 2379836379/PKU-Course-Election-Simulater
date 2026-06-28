@@ -1,4 +1,4 @@
-"""
+﻿"""
 Virtual Course Selection Application
 
 Expected columns in courses.xlsx:
@@ -96,7 +96,19 @@ LANGUAGES = {
         "import_selected_button": "Restore Selection",
         "import_invalid_json": "Invalid JSON file",
         "import_done": "Selection restored",
-        "import_partial": "Some courses were not found"
+        "import_partial": "Some courses were not found",
+        "nav": "Navigation",
+        "nav_courses": "Browse Courses",
+        "nav_preselect": "Preselection Pool",
+        "nav_timetable": "Timetable",
+        "preselected_courses": "Preselected Courses",
+        "add_to_preselect": "Preselect",
+        "add_to_timetable": "Add to Timetable",
+        "remove": "Remove",
+        "already_selected": "Already selected",
+        "already_in_pool": "Already in pool",
+        "added_to_pool": "Added to preselection",
+        "moved_to_timetable": "Added to timetable"
     },
     "zh": {
         "app_title": "模拟选课系统",
@@ -153,7 +165,19 @@ LANGUAGES = {
         "import_selected_button": "恢复选课",
         "import_invalid_json": "JSON 文件不合法",
         "import_done": "已恢复选课",
-        "import_partial": "部分课程未找到"
+        "import_partial": "部分课程未找到",
+        "nav": "页面",
+        "nav_courses": "选课",
+        "nav_preselect": "预选池",
+        "nav_timetable": "课表",
+        "preselected_courses": "预选课程",
+        "add_to_preselect": "加入预选",
+        "add_to_timetable": "加入课表",
+        "remove": "移除",
+        "already_selected": "已在课表",
+        "already_in_pool": "已在预选池",
+        "added_to_pool": "已加入预选池",
+        "moved_to_timetable": "已加入课表"
     }
 }
 
@@ -519,616 +543,455 @@ def export_timetable_to_excel(selected_courses, lang):
 
 def main():
     st.set_page_config(page_title="模拟选课", layout="wide")
-    
-    # Custom CSS to reduce row height and spacing for a more compact view
-    st.markdown("""
-        <style>
-        /* Commented out to fix inconsistent button sizes */
-        /*
-        div.stButton > button {
-            min-height: 30px !important;
-            height: 30px !important;
-            padding-top: 2px !important;
-            padding-bottom: 2px !important;
-            font-size: 14px !important;
-        }
-        */
-        
-        /* Target BOTH standard buttons and download buttons to ensure equal sizing */
-        div.stButton > button, div.stDownloadButton > button {
-            padding-top: 0.4rem !important;
-            padding-bottom: 0.4rem !important;
-            padding-left: 0.6rem !important;
-            padding-right: 0.6rem !important;
-            min-height: auto !important;
-            height: auto !important;
-            line-height: 1.2 !important;
-            margin-top: 0px !important; /* Reset to 0 */
-            margin-bottom: 0px !important; /* Reset to 0 */
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        }
-        
-        /* Optimized input style: separate container and internal input for vertical centering */
-        
-        /* 1. Outer container: slightly increase height and use flex to force vertical centering */
-        div[data-baseweb="input"] > div {
-            min-height: 36px !important; /* Increased from 30px to 36px for better visuals */
-            height: 36px !important;
-            padding: 0px !important;
-            display: flex !important;
-            align-items: center !important; /* Key: enforces vertical centering */
-            border-radius: 5px !important;
-        }
-        
-        /* 2. Internal Input element: fill container, adjust font size */
-        div[data-baseweb="input"] input {
-            min-height: 100% !important;
-            height: 100% !important;
-            padding: 0px 10px !important; /* Keep horizontal padding only */
-            font-size: 16px !important;   /* Increased from 14px to 16px */
-            line-height: normal !important; /* Reset line-height, let flex handle alignment */
-            margin: 0px !important;
-        }
-        
-        /* Reduce padding in markdown text elements */
-        div[data-testid="stMarkdownContainer"] p {
-            margin-bottom: 0px !important;
-        }
-        
-        /* Reduce margin around horizontal rules (dividers) */
-        hr {
-            margin-top: 0.25rem !important;
-            margin-bottom: 0.25rem !important;
-        }
-        
-        /* Reduce padding inside columns */
-        div[data-testid="column"] {
-            padding-top: 0rem !important;
-            padding-bottom: 0rem !important;
-        }
-        
-        /* Fine-tune text vertical alignment in columns */
-        div[data-testid="column"] {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-        }
-        
-        /* CRITICAL: Remove bottom margin from text inside columns */
-        /* This ensures the text's visual center matches the row's center */
-        div[data-testid="column"] p {
-            margin-bottom: 0px !important;
-            line-height: 1.5 !important; /* Standardize line height */
-            padding-top: 2px !important; /* Micro-adjustment for visual weight */
-        }
-        
-        /* Ensure timetable takes full height and shows all rows */
-        div[data-testid="stDataFrame"] {
-            height: auto !important;
-        }
-        
-        /* Style for timetable cells to ensure proper display */
-        td {
-            padding: 2px 4px !important;
-            font-size: 13px !important;
-        }
-        
-        th {
-            padding: 4px !important;
-            font-size: 13px !important;
-        }
-        
-        /* Force toast to auto-expand for long text */
-        div[data-baseweb="toast"] {
-            height: auto !important;
-            min-height: 60px !important;
-            white-space: pre-wrap !important; /* Allow text wrapping */
-            word-break: break-word !important;
-            width: auto !important;
-            max-width: 40vw !important; /* Make it wider if needed */
-        }
-        div[data-baseweb="toast"] > div {
-            height: auto !important;
-        }
 
-        /* Adjust blue info box height */
-        .info-box {
-            padding: 10px !important;
-            line-height: 1.5 !important;
-        }
-        
-        /* Fix Toast Notification Truncation */
+    # Global CSS tweaks
+    st.markdown(
+        """
+        <style>
         div[data-baseweb="toast"] {
             width: auto !important;
             min-height: auto !important;
             height: auto !important;
             max-width: 80vw !important;
         }
-        
-        /* Target the inner text body of the toast */
         div[data-baseweb="toast"] div {
             white-space: pre-wrap !important;
             word-wrap: break-word !important;
             line-height: 1.5 !important;
             height: auto !important;
         }
-        
-        /* Ensure the close button doesn't overlap text */
         div[data-baseweb="toast"] > div:last-child {
             align-items: flex-start !important;
             padding-top: 8px !important;
         }
-
-        /* Adjust blue info box height */
-        .info-box {
-            padding: 10px !important;
-            line-height: 1.5 !important;
-        }
         </style>
-    """, unsafe_allow_html=True)
-    
-    # Initialize page state at the very beginning
-    if 'current_page' not in st.session_state:
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Initialize page state
+    if "current_page" not in st.session_state:
         st.session_state.current_page = 1
-    
-    # Language selection - Changed default to Chinese
+
+    # Language selection
     language = st.sidebar.selectbox(
         "Language / 语言",
-        options=["zh", "en"],  # Changed order to make Chinese the default
-        format_func=lambda x: "中文" if x == "zh" else "English"
+        options=["zh", "en"],
+        format_func=lambda x: "中文" if x == "zh" else "English",
     )
     lang = LANGUAGES[language]
-    timetable_header_bg = "var(--secondary-background-color)"
-    timetable_header_fg = "var(--text-color)"
-    
+
     st.title(lang["app_title"])
-    
-    # Add cache clear button in sidebar
+
+    # Sidebar: cache clear
     with st.sidebar:
         if st.button("🔄 " + ("清除缓存" if language == "zh" else "Clear Cache")):
             st.cache_resource.clear()
-            st.session_state.current_page = 1 # Reset page on cache clear
+            st.session_state.current_page = 1
             st.success("✓ " + ("缓存已清除" if language == "zh" else "Cache cleared"))
             st.rerun()
-    
+
     # Load data
     df = load_data()
-    
     if df is None:
         st.warning(lang["file_not_found"].replace("courses.xlsx", "courses.parquet"))
-        
+
         col1, col2 = st.columns(2)
         with col1:
-            # Removed xlsx uploader as requested
             st.info("Please place 'courses.parquet' in the application directory.")
-        
+
         with col2:
             if st.button(lang["generate_sample"]):
                 df = generate_sample_data()
-                # Save to file for future use
                 try:
                     save_df = df.copy()
-                    # No need to pre-compute parsed_time for saving anymore
-                    # Just save the raw data
-                    save_df.to_parquet("courses.parquet", compression='snappy', index=False)
+                    save_df.to_parquet("courses.parquet", compression="snappy", index=False)
                 except Exception:
                     pass
-        
+
         if df is None:
             st.stop()
-    
-    # Initialize session state for courses
-    if 'selected_courses' not in st.session_state:
+
+    # Session state
+    if "selected_courses" not in st.session_state:
         st.session_state.selected_courses = []
-    
-    if 'degree_type' not in st.session_state:
-        st.session_state.degree_type = "single"  # single or double
-    
-    # Cache for timetable
-    if 'timetable_cache' not in st.session_state:
+    if "preselected_courses" not in st.session_state:
+        st.session_state.preselected_courses = []
+
+    if "degree_type" not in st.session_state:
+        st.session_state.degree_type = "single"
+
+    if "timetable_cache" not in st.session_state:
         st.session_state.timetable_cache = None
-    if 'timetable_courses_hash' not in st.session_state:
+    if "timetable_courses_hash" not in st.session_state:
         st.session_state.timetable_courses_hash = None
-    
-    # Sidebar controls
-    
-    # Get unique departments
-    departments = sorted(df['院系'].unique())
-    
-    # Degree type selection
+
+    def course_key(course: dict) -> tuple[str, str]:
+        return (str(course.get("课程号", "")).strip(), str(course.get("班号", "")).strip())
+
+    def list_has(course_list: list[dict], key: tuple[str, str]) -> bool:
+        for c in course_list:
+            if course_key(c) == key:
+                return True
+        return False
+
+    def remove_from_list(course_list: list[dict], key: tuple[str, str]) -> None:
+        for i, c in enumerate(list(course_list)):
+            if course_key(c) == key:
+                course_list.pop(i)
+                return
+
+    # Navigation
+    nav = st.sidebar.radio(
+        lang.get("nav", "Navigation"),
+        options=["courses", "preselect", "timetable"],
+        format_func=lambda x: (
+            lang["nav_courses"]
+            if x == "courses"
+            else (lang["nav_preselect"] if x == "preselect" else lang["nav_timetable"])
+        ),
+    )
+
+    # Degree type (affects credit warning)
     degree_type = st.sidebar.radio(
         lang["degree_type"],
         options=["single", "double"],
-        format_func=lambda x: lang["single_degree"] if x == "single" else lang["double_degree"]
+        format_func=lambda x: lang["single_degree"] if x == "single" else lang["double_degree"],
     )
-    
-    # Second department selection for double degree students
-    second_dept = None
-    
+    st.session_state.degree_type = degree_type
     max_credits = 25 if degree_type == "single" else 30
-    
-    # Calculate current credits
-    current_credits = sum(float(course.get('参考学分', 0)) for course in st.session_state.selected_courses)
-    
-    # Show all courses by default
-    filtered_df = df
-    
-    # Additional filters
-    st.sidebar.header("Filters")
-    
-    # Department filter
-    all_depts = [lang["all_departments"]] + sorted(filtered_df['院系'].unique())
-    
-    # Reset page when filters change
-    def reset_page_callback():
-        st.session_state.current_page = 1
-        
-    dept_filter = st.sidebar.selectbox(
-        lang["filter_by_department"],
-        options=all_depts,
-        on_change=reset_page_callback
-    )
-    
-    if dept_filter != lang["all_departments"]:
-        filtered_df = filtered_df[filtered_df['院系'] == dept_filter]
+    current_credits = sum(float(c.get("参考学分", 0) or 0) for c in st.session_state.selected_courses)
 
-    days_list = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-    weekday_filter = st.sidebar.multiselect(
-        lang["filter_by_weekday"],
-        options=days_list,
-        default=days_list,
-        format_func=lambda d: lang["week_" + d],
-        on_change=reset_page_callback
-    )
+    # Sidebar quick stats
+    st.sidebar.caption(f"{lang['current_credits']}: {current_credits} / {lang['max_credits']}: {max_credits}")
 
-    start_period = st.sidebar.number_input(
-        lang["filter_time_start"],
-        min_value=1,
-        max_value=12,
-        value=1,
-        step=1,
-        on_change=reset_page_callback
-    )
+    def add_to_preselect(row_or_dict) -> None:
+        course_dict = row_or_dict.to_dict() if hasattr(row_or_dict, "to_dict") else dict(row_or_dict)
+        key = course_key(course_dict)
+        if not key[0] or not key[1]:
+            return
 
-    end_period = st.sidebar.number_input(
-        lang["filter_time_end"],
-        min_value=int(start_period),
-        max_value=12,
-        value=12 if int(start_period) <= 12 else int(start_period),
-        step=1,
-        on_change=reset_page_callback
-    )
+        if list_has(st.session_state.selected_courses, key):
+            st.toast(lang.get("already_selected", "Already selected"), icon="ℹ️")
+            return
+        if list_has(st.session_state.preselected_courses, key):
+            st.toast(lang.get("already_in_pool", "Already in pool"), icon="ℹ️")
+            return
 
-    selected_days_set = set(weekday_filter)
-    if selected_days_set != set(days_list) or int(start_period) != 1 or int(end_period) != 12:
-        filtered_df = filtered_df[
-            filtered_df["上课时间"].apply(
-                lambda t: course_matches_day_time(t, selected_days_set, int(start_period), int(end_period))
+        st.session_state.preselected_courses.append(course_dict)
+        st.toast(lang.get("added_to_pool", "Added to preselection"), icon="✅")
+
+    def move_to_timetable(course_dict: dict) -> None:
+        key = course_key(course_dict)
+        if not key[0] or not key[1]:
+            return
+
+        if list_has(st.session_state.selected_courses, key):
+            st.toast(lang.get("already_selected", "Already selected"), icon="ℹ️")
+            remove_from_list(st.session_state.preselected_courses, key)
+            st.rerun()
+
+        conflict_course = check_conflict(course_dict, st.session_state.selected_courses)
+        if conflict_course:
+            st.toast(f"❌ {lang['conflict_detected']} {conflict_course}", icon="⚠️")
+            return
+
+        course_dict = dict(course_dict)
+        course_dict["_parsed_time"] = parse_time(course_dict.get("上课时间"))
+        st.session_state.selected_courses.append(course_dict)
+        remove_from_list(st.session_state.preselected_courses, key)
+
+        st.session_state.timetable_cache = None
+        st.session_state.timetable_courses_hash = None
+        st.toast(lang.get("moved_to_timetable", "Added to timetable"), icon="✅")
+        st.rerun()
+
+    def render_courses_view() -> None:
+        # Filters only make sense on this page
+        filtered_df = df
+
+        st.sidebar.header("Filters")
+
+        def reset_page_callback():
+            st.session_state.current_page = 1
+
+        all_depts = [lang["all_departments"]] + sorted(filtered_df["院系"].unique())
+        dept_filter = st.sidebar.selectbox(
+            lang["filter_by_department"],
+            options=all_depts,
+            on_change=reset_page_callback,
+            key="dept_filter",
+        )
+        if dept_filter != lang["all_departments"]:
+            filtered_df = filtered_df[filtered_df["院系"] == dept_filter]
+
+        days_list = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        weekday_filter = st.sidebar.multiselect(
+            lang["filter_by_weekday"],
+            options=days_list,
+            default=days_list,
+            format_func=lambda d: lang["week_" + d],
+            on_change=reset_page_callback,
+            key="weekday_filter",
+        )
+
+        start_period = int(
+            st.sidebar.number_input(
+                lang["filter_time_start"],
+                min_value=1,
+                max_value=12,
+                value=1,
+                step=1,
+                on_change=reset_page_callback,
+                key="start_period",
             )
-        ]
-    
-    # Course name search (Moved to main page)
-    course_search = st.text_input(lang["search_course"], on_change=reset_page_callback)
-    if course_search:
-        keywords = [k for k in course_search.lower().split() if k]
-        if keywords:
-            mask = pd.Series(True, index=filtered_df.index)
-            course_name_s = filtered_df['_course_name_lower']
-            instructor_s = (
-                filtered_df['_instructor_lower']
-                if '_instructor_lower' in filtered_df.columns
-                else pd.Series("", index=filtered_df.index)
+        )
+        end_period = int(
+            st.sidebar.number_input(
+                lang["filter_time_end"],
+                min_value=1,
+                max_value=12,
+                value=12,
+                step=1,
+                on_change=reset_page_callback,
+                key="end_period",
             )
-            for k in keywords:
-                mask &= (
-                    course_name_s.str.contains(k, na=False, regex=False)
-                    | instructor_s.str.contains(k, na=False, regex=False)
+        )
+        if start_period > end_period:
+            start_period, end_period = end_period, start_period
+
+        # Day/time filter
+        if weekday_filter:
+            filtered_df = filtered_df[
+                filtered_df["上课时间"].apply(
+                    lambda s: course_matches_day_time(s, weekday_filter, start_period, end_period)
                 )
-            filtered_df = filtered_df[mask]
+            ]
 
- # --- Pagination Logic ---
-    courses_per_page = 10
-    total_courses = len(filtered_df)
-    total_pages = (total_courses - 1) // courses_per_page + 1 if total_courses > 0 else 1
-    
-    # Ensure current page is valid
-    if st.session_state.current_page > total_pages:
-        st.session_state.current_page = total_pages
-    if st.session_state.current_page < 1:
-        st.session_state.current_page = 1
-    # Initialize page input state if not present
-    if "page_input" not in st.session_state:
-        st.session_state.page_input = str(st.session_state.current_page)
-    
-    # --- Pagination UI ---
-    if total_pages > 1:
-        # update page input
-        def prev_page_callback():
-            st.session_state.current_page -= 1
-            st.session_state.page_input = str(st.session_state.current_page)
-        
-        def next_page_callback():
-            st.session_state.current_page += 1
-            st.session_state.page_input = str(st.session_state.current_page)
-            
-        def set_page_callback():
-            try:
-                val = int(st.session_state.page_input)
-                if 1 <= val <= total_pages:
-                    st.session_state.current_page = val
-                else:
-                    st.session_state.page_input = str(st.session_state.current_page)
-            except ValueError:
-                st.session_state.page_input = str(st.session_state.current_page)
-        
-        # Create 5 columns: Spacer, Prev, Display, Next, Spacer
-        # vertical_alignment="center" is a safeguard, but the button trick does the heavy lifting
-        c1, c2, c3, c4, c5 = st.columns([6, 1, 2, 1, 6], vertical_alignment="center")
-        
-        with c2:
-            # Previous Button
-            st.button("←", on_click=prev_page_callback, disabled=(st.session_state.current_page <= 1), key="prev_top", use_container_width=True)
+        # Search
+        query = st.sidebar.text_input(lang["search_course"], value="", on_change=reset_page_callback, key="search_query")
+        q = (query or "").strip().lower()
+        if q:
+            keywords = [k for k in q.split() if k]
+            if keywords:
+                course_name_s = filtered_df.get("_course_name_lower", filtered_df["课程名"].astype(str).str.lower())
+                instructor_s = filtered_df.get("_instructor_lower", filtered_df.get("授课教师", "").astype(str).str.lower())
+                mask = pd.Series(True, index=filtered_df.index)
+                for k in keywords:
+                    mask &= course_name_s.str.contains(k, na=False, regex=False) | instructor_s.str.contains(k, na=False, regex=False)
+                filtered_df = filtered_df[mask]
 
-        with c3:
-            # The "Display" Button (Disabled, acting as a label)
-            # It sits perfectly flush with the arrow buttons
-            st.button(f"{st.session_state.current_page} / {total_pages}", disabled=True, key="page_display_top", use_container_width=True)
+        # Pagination
+        courses_per_page = 10
+        total_courses = len(filtered_df)
+        total_pages = (total_courses - 1) // courses_per_page + 1 if total_courses > 0 else 1
 
-        with c4:
-            # Next Button
-            st.button("→", on_click=next_page_callback, disabled=(st.session_state.current_page >= total_pages), key="next_top", use_container_width=True)
-        
-        st.write("")
-    
-    start_idx = (st.session_state.current_page - 1) * courses_per_page
-    end_idx = start_idx + courses_per_page
-    page_courses = filtered_df.iloc[start_idx:end_idx]
-    
-    # Display courses table
-    if not page_courses.empty:
-        # Display each course as a card
+        if st.session_state.current_page > total_pages:
+            st.session_state.current_page = total_pages
+        if st.session_state.current_page < 1:
+            st.session_state.current_page = 1
+
+        if total_pages > 1:
+            def prev_page_callback():
+                st.session_state.current_page -= 1
+
+            def next_page_callback():
+                st.session_state.current_page += 1
+
+            c1, c2, c3, c4, c5 = st.columns([6, 1, 2, 1, 6], vertical_alignment="center")
+            with c2:
+                st.button("←", on_click=prev_page_callback, disabled=(st.session_state.current_page <= 1), key="prev_top", use_container_width=True)
+            with c3:
+                st.button(f"{st.session_state.current_page} / {total_pages}", disabled=True, key="page_display_top", use_container_width=True)
+            with c4:
+                st.button("→", on_click=next_page_callback, disabled=(st.session_state.current_page >= total_pages), key="next_top", use_container_width=True)
+
+        start_idx = (st.session_state.current_page - 1) * courses_per_page
+        end_idx = start_idx + courses_per_page
+        page_courses = filtered_df.iloc[start_idx:end_idx]
+
+        if page_courses.empty:
+            st.info("No courses" if language == "en" else "没有符合条件的课程")
+            return
+
         for idx, (_, row) in enumerate(page_courses.iterrows()):
-            # Create a bordered container for each course item
+            course_id = str(row.get("课程号", "")).strip()
+            class_id = str(row.get("班号", "")).strip()
+            key = (course_id, class_id)
+            in_selected = list_has(st.session_state.selected_courses, key)
+            in_pool = list_has(st.session_state.preselected_courses, key)
+
             with st.container(border=True):
-                # Split into two main sections: Information (Left) and Action (Right)
-                # Ratio 4:1 ensures the button has its own dedicated space
                 c_info, c_action = st.columns([4, 1], vertical_alignment="center")
-                
                 with c_info:
-                    # Top Row: Course Name (Bold/Large) and ID
-                    st.markdown(f"**{row['课程名']}** <span style='color:grey; font-size:0.9em'>({row['课程号']})</span>", unsafe_allow_html=True)
-                    
-                    # Bottom Row: Meta data (Dept, Credit, Teacher, Time) using distinct styling or captions
-                    # Using a single line with separators looks clean
-                    meta_text = f"教师：{row['授课教师']} &nbsp;|&nbsp; 院系：{row['院系']} &nbsp;|&nbsp; 学分：{row['参考学分']} &nbsp;|&nbsp; 时间：{row['上课时间']}"
+                    st.markdown(
+                        f"**{row['课程名']}** <span style='color:grey; font-size:0.9em'>({row['课程号']})</span>",
+                        unsafe_allow_html=True,
+                    )
+                    meta_text = f"教师：{row.get('授课教师','')}  |  院系：{row.get('院系','')}  |  学分：{row.get('参考学分','')}  |  时间：{row.get('上课时间','')}"
                     st.caption(meta_text)
-                    
+
                 with c_action:
-                    # The button lives here, vertically centered by the column setting
-                    # use_container_width=True makes it fill the right side neatly
-                    if st.button(lang["select"], key=f"sel_{idx}_{row['课程号']}", use_container_width=True):
-                        conflict_course = check_conflict(row, st.session_state.selected_courses)
-                        
-                        if conflict_course:
-                            st.toast(f"❌ {lang['conflict_detected']} {conflict_course}", icon='⚠️')
-                        else:
-                            course_dict = row.to_dict()
-                            # Parse time on demand since we removed the pre-computed column
-                            if '_parsed_time' not in course_dict or pd.isna(course_dict['_parsed_time']):
-                                course_dict['_parsed_time'] = parse_time(course_dict['上课时间'])
-                            st.session_state.selected_courses.append(course_dict)
-                            st.toast(f"✅ {lang['no_conflict']}", icon='🎉')
+                    label = lang.get("add_to_preselect", lang["select"])
+                    disabled = in_selected or in_pool
+                    if st.button(label, key=f"pre_{start_idx+idx}_{course_id}_{class_id}", use_container_width=True, disabled=disabled):
+                        add_to_preselect(row)
+                        st.rerun()
+
+                    if in_selected:
+                        st.caption(lang.get("already_selected", "Already selected"))
+                    elif in_pool:
+                        st.caption(lang.get("already_in_pool", "Already in pool"))
+
+    def render_preselect_view() -> None:
+        st.subheader(lang.get("preselected_courses", "Preselected Courses"))
+
+        pool = st.session_state.preselected_courses
+        if not pool:
+            st.info("预选池为空。请先在“选课”页将课程加入预选池。" if language == "zh" else "Preselection pool is empty. Add courses from the Browse page.")
+            return
+
+        for idx, course in enumerate(list(pool)):
+            key = course_key(course)
+            with st.container(border=True):
+                c_info, c_action = st.columns([4, 2], vertical_alignment="center")
+                with c_info:
+                    st.markdown(
+                        f"**{course.get('课程名','')}** <span style='color:grey; font-size:0.9em'>({course.get('课程号','')})</span>",
+                        unsafe_allow_html=True,
+                    )
+                    meta_text = f"教师：{course.get('授课教师','')}  |  院系：{course.get('院系','')}  |  学分：{course.get('参考学分','')}  |  时间：{course.get('上课时间','')}"
+                    st.caption(meta_text)
+
+                with c_action:
+                    b1, b2 = st.columns(2)
+                    with b1:
+                        if st.button(lang.get("add_to_timetable", "Add to Timetable"), key=f"to_tt_{idx}_{key[0]}_{key[1]}", use_container_width=True):
+                            move_to_timetable(course)
+                    with b2:
+                        if st.button(lang.get("remove", "Remove"), key=f"rm_pre_{idx}_{key[0]}_{key[1]}", use_container_width=True, type="secondary"):
+                            remove_from_list(st.session_state.preselected_courses, key)
                             st.rerun()
-    else:
-        # Custom styled message for no matching courses
-        message_text = "No matching courses found" if language == "en" else "无符合条件的课程"
-        st.markdown(f'''
-        <div style="
-            background-color: rgba(28, 131, 225, 0.1);
-            color: rgb(0, 66, 128);
-            padding: 20px;
-            border-radius: 0.5rem;
-            border: 1px solid rgba(28, 131, 225, 0.1);
-            text-align: center;
-            margin-top: 10px;
-            margin-bottom: 10px;">
-            {message_text}
-        </div>
-        ''', unsafe_allow_html=True)
-    
-    # Define a helper to generate the HTML timetable
-    def get_timetable_html(timetable, day_names):
-        html = """
-        <style>
-            .tt-table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
-            .tt-header { background-color: #262730; color: white; padding: 12px; text-align: center; font-weight: bold; width: 12.5%; border: 1px solid #444; }
-            .tt-cell { border: 1px solid #ddd; padding: 5px; height: 65px; vertical-align: top; width: 12.5%; }
-            .tt-period { background-color: #f0f2f6; font-weight: bold; text-align: center; vertical-align: middle; width: 5%; color: #31333F; }
-            
-            /* Style for a course block inside the cell */
-            .course-block {
-                background-color: #e8f0fe; 
-                color: #1967d2;
-                padding: 4px 8px;
-                border-radius: 4px;
-                font-size: 0.85em;
-                margin-bottom: 4px;
-                border-left: 3px solid #1967d2;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            }
-        </style>
-        <table class="tt-table">
-            <thead>
-                <tr>
-                    <th class="tt-header">#</th>
-        """
-        # Add Headers
-        for day_code in day_names:
-            html += f'<th class="tt-header">{day_names[day_code]}</th>'
-        html += "</tr></thead><tbody>"
 
-        # Add Rows (Periods 1-12)
-        for period in range(1, 13):
-            html += f'<tr><td class="tt-cell tt-period">{period}</td>'
-            for day_code in day_names:
-                courses = timetable[day_code][period]
-                cell_content = ""
-                if courses:
-                    for c in courses:
-                        # Format course info
-                        info = c['course']
-                        if c['week'] == 'odd': info += " (单)"
-                        elif c['week'] == 'even': info += " (双)"
-                        
-                        cell_content += f'<div class="course-block">{info}</div>'
-                
-                html += f'<td class="tt-cell">{cell_content}</td>'
-            html += "</tr>"
-        
-        html += "</tbody></table>"
-        return html
+    def render_timetable_view() -> None:
+        st.subheader(lang["timetable"])
 
-    # Display timetable before selected courses table
-    st.subheader(lang["timetable"])
-    
-    # Create and display timetable
-    if st.session_state.selected_courses:
-        # Check if we can use cached timetable
-        courses_hash = hash(str([(c['课程号'], c['班号']) for c in st.session_state.selected_courses]))
-        
-        if (st.session_state.timetable_courses_hash == courses_hash and 
-            st.session_state.timetable_cache is not None):
-            # Use cached timetable
-            timetable, day_names = st.session_state.timetable_cache
-        else:
-            # Generate new timetable and cache it
-            timetable, day_names = create_timetable(st.session_state.selected_courses, lang)
-            st.session_state.timetable_cache = (timetable, day_names)
-            st.session_state.timetable_courses_hash = courses_hash
-        
-        # 1. Create the DataFrame for the view
-        # (Assuming you already have 'timetable' dict from previous logic)
-        timetable_data_for_df = {}
+        timetable_header_bg = "var(--secondary-background-color)"
+        timetable_header_fg = "var(--text-color)"
+
+        day_names = {
+            'mon': lang["week_mon"], 'tue': lang["week_tue"], 'wed': lang["week_wed"],
+            'thu': lang["week_thu"], 'fri': lang["week_fri"], 'sat': lang["week_sat"],
+            'sun': lang["week_sun"],
+        }
         days_list = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-        
-        for day in days_list:
-            day_col = []
-            for period in range(1, 13):
-                # Extract course info string
-                courses = timetable[day][period]
-                if courses:
-                    # Combine multiple courses with newlines
-                    text_parts = []
-                    for c in courses:
-                        info = c['course']
-                        if c['week'] == 'odd': info += " (单)"
-                        elif c['week'] == 'even': info += " (双)"
-                        text_parts.append(info)
-                    day_col.append("\n".join(text_parts))
-                else:
-                    day_col.append("")
-            
-            # Add to dict with translated header
-            timetable_data_for_df[lang['week_' + day]] = day_col
 
-        # Create DF with 1-12 index
-        df_tt = pd.DataFrame(timetable_data_for_df, index=range(1, 13))
+        if st.session_state.selected_courses:
+            courses_hash = hash(str([(c.get('课程号'), c.get('班号')) for c in st.session_state.selected_courses]))
+            if (st.session_state.timetable_courses_hash == courses_hash and st.session_state.timetable_cache is not None):
+                timetable, _day_names = st.session_state.timetable_cache
+            else:
+                timetable, _day_names = create_timetable(st.session_state.selected_courses, lang)
+                st.session_state.timetable_cache = (timetable, _day_names)
+                st.session_state.timetable_courses_hash = courses_hash
 
-        # Define the styling function (Blue background for courses)
+            timetable_data_for_df = {}
+            for day in days_list:
+                day_col = []
+                for period in range(1, 13):
+                    courses = timetable[day][period]
+                    if courses:
+                        text_parts = []
+                        for c in courses:
+                            info = c['course']
+                            if c['week'] == 'odd':
+                                info += " (单)" if language == 'zh' else " (Odd)"
+                            elif c['week'] == 'even':
+                                info += " (双)" if language == 'zh' else " (Even)"
+                            text_parts.append(info)
+                        day_col.append("\n".join(text_parts))
+                    else:
+                        day_col.append("")
+                timetable_data_for_df[day_names[day]] = day_col
+
+            df_tt = pd.DataFrame(timetable_data_for_df, index=range(1, 13))
+        else:
+            df_tt = pd.DataFrame({day_names[d]: [""] * 12 for d in days_list}, index=range(1, 13))
+
         def color_courses(val):
             if val and str(val).strip() != "":
                 return 'background-color: rgba(28, 131, 225, 0.2); border-radius: 4px; font-weight: bold; color: inherit;'
             return ''
 
-        # Get translated day names for styling subset
-        translated_days_list = [lang['week_' + day] for day in days_list]
-
-        # Apply Styler with FIXED Layout Logic
-        styled_df = df_tt.style.map(color_courses) \
-            .set_properties(**{
-                'height': '65px',              # Fixed row height
-                'vertical-align': 'middle',    # Center vertically
-                'text-align': 'center',        # Center horizontally
-                'white-space': 'pre-wrap',     # Wrap text inside the fixed width
-                'border': '1px solid #444' if language == 'zh' else '1px solid #ddd'
-            }) \
-            .set_table_styles([
-                # 1. CRITICAL: Force the table to stop shrinking based on content
-                {'selector': 'table', 'props': [
-                    ('width', '100%'),          # Fill container
-                    ('table-layout', 'fixed'),  # Ignore content length
-                    ('border-collapse', 'collapse'),
-                    ('margin', '0'),            # Remove margins
-                    ('padding', '0')            # Remove padding
-                ]},
-                # 2. Header Styling
-                {'selector': 'th', 'props': [
-                    ('background-color', timetable_header_bg),
-                    ('color', timetable_header_fg),
-                    ('text-align', 'center'),
-                    ('vertical-align', 'middle')
-                ]},
-                # 3. Cell styling
-                {'selector': 'td, th', 'props': [
-                    ('box-sizing', 'border-box')  # Include padding and border in width calculation
-                ]}
-            ]) \
+        styled_df = (
+            df_tt.style.map(color_courses)
             .set_properties(
-                subset=translated_days_list,  # <--- ONLY apply width to Mon-Sun (using translated names)
-                **{'width': '13.5%'} # 13.5% * 7 = 94.5%, leaving 5.5% for the index
+                **{
+                    'height': '65px',
+                    'vertical-align': 'middle',
+                    'text-align': 'center',
+                    'white-space': 'pre-wrap',
+                    'border': '1px solid #444' if language == 'zh' else '1px solid #ddd',
+                }
             )
+            .set_table_styles(
+                [
+                    {'selector': 'table', 'props': [('width', '100%'), ('table-layout', 'fixed'), ('border-collapse', 'collapse')]},
+                    {'selector': 'th', 'props': [('background-color', timetable_header_bg), ('color', timetable_header_fg), ('text-align', 'center'), ('vertical-align', 'middle')]},
+                    {'selector': 'td, th', 'props': [('box-sizing', 'border-box')]},
+                ]
+            )
+        )
 
-        # 4. Render with container that ensures full width
-        # to_html() generates the HTML, st.markdown renders it
-        st.markdown(f"""
+        st.markdown(
+            f"""
 <style>
-    .timetable-wrapper table {{
-        width: 100% !important;
-        table-layout: fixed !important;
-        border-collapse: collapse !important;
-    }}
-    /* First Column: Narrow (Index) */
-    .timetable-wrapper th:first-child,
-    .timetable-wrapper td:first-child {{
-        width: 6% !important;
-    }}
-    /* Other Columns: Evenly distributed */
-    .timetable-wrapper th:not(:first-child),
-    .timetable-wrapper td:not(:first-child) {{
-        width: 13.4% !important;
-    }}
-    .timetable-wrapper td, .timetable-wrapper th {{
-        text-align: center !important;
-        vertical-align: middle !important;
-    }}
+.timetable-wrapper table {{
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+}}
+.timetable-wrapper th:first-child,
+.timetable-wrapper td:first-child {{
+    width: 6% !important;
+}}
+.timetable-wrapper th:not(:first-child),
+.timetable-wrapper td:not(:first-child) {{
+    width: 13.4% !important;
+}}
+.timetable-wrapper td, .timetable-wrapper th {{
+    text-align: center !important;
+    vertical-align: middle !important;
+}}
 </style>
-<div class="timetable-wrapper">
-    {styled_df.to_html()}
-</div>
-""", unsafe_allow_html=True)
-        
-        # Export timetable button - Fixed to work with one click
+<div class="timetable-wrapper">{styled_df.to_html()}</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+        # Export timetable
         excel_data = export_timetable_to_excel(st.session_state.selected_courses, lang)
         if excel_data:
             st.download_button(
                 label=lang["export_timetable"],
                 data=excel_data,
                 file_name="课程表.xlsx" if language == "zh" else "timetable.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
 
+        # Backup / Restore (selected courses)
         st.subheader(lang["backup_restore"])
         selected_json = export_selected_courses_json(st.session_state.selected_courses)
         st.download_button(
             label=lang["export_selected_json"],
             data=selected_json,
             file_name="已选课程.json" if language == "zh" else "selected_courses.json",
-            mime="application/json"
+            mime="application/json",
         )
         uploaded_json = st.file_uploader(
             label=lang["import_selected_json"],
             type=["json"],
-            key="selected_courses_json_uploader"
+            key="selected_courses_json_uploader",
         )
         if uploaded_json is not None:
             raw = uploaded_json.getvalue()
@@ -1146,11 +1009,10 @@ def main():
                     if missing:
                         st.toast(f"⚠️ {lang['import_partial']}: {len(missing)}", icon="⚠️")
                     st.rerun()
-        
-        # Display credit counter immediately after timetable
+
+        # Credits
         st.subheader(f"{lang['current_credits']}: {current_credits} / {lang['max_credits']}: {max_credits}")
         if current_credits > max_credits:
-            # Replacing st.error with custom styled markdown div
             st.markdown(
                 f"""
                 <div style="
@@ -1165,191 +1027,38 @@ def main():
                     ⚠️ {lang['warning']}: {lang['credit_exceeded']}
                 </div>
                 """,
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
+
+        # Selected courses list
+        if st.session_state.selected_courses:
+            st.subheader(lang["selected_courses"])
+            for idx, course in enumerate(list(st.session_state.selected_courses)):
+                key = course_key(course)
+                with st.container(border=True):
+                    c_info, c_action = st.columns([4, 1], vertical_alignment="center")
+                    with c_info:
+                        st.markdown(
+                            f"**{course.get('课程名','')}** <span style='color:grey; font-size:0.9em'>({course.get('课程号','')})</span>",
+                            unsafe_allow_html=True,
+                        )
+                        meta_text = f"教师：{course.get('授课教师','')}  |  院系：{course.get('院系','')}  |  学分：{course.get('参考学分','')}  |  时间：{course.get('上课时间','')}"
+                        st.caption(meta_text)
+
+                    with c_action:
+                        if st.button(lang["cancel"], key=f"cancel_{idx}_{key[0]}_{key[1]}", use_container_width=True, type="primary"):
+                            remove_from_list(st.session_state.selected_courses, key)
+                            st.session_state.timetable_cache = None
+                            st.session_state.timetable_courses_hash = None
+                            st.rerun()
+
+    if nav == "courses":
+        render_courses_view()
+    elif nav == "preselect":
+        render_preselect_view()
     else:
-        # Show empty timetable with all 12 periods when no courses are selected
-        day_names = {
-            'mon': lang["week_mon"], 'tue': lang["week_tue"], 'wed': lang["week_wed"],
-            'thu': lang["week_thu"], 'fri': lang["week_fri"], 'sat': lang["week_sat"], 
-            'sun': lang["week_sun"]
-        }
-        
-        # 1. Create the DataFrame for the view (empty)
-        timetable_data_for_df = {}
-        days_list = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
-        
-        for day in days_list:
-            # Add to dict with translated header
-            timetable_data_for_df[lang['week_' + day]] = [""] * 12
+        render_timetable_view()
 
-        # Create DF with 1-12 index
-        df_tt = pd.DataFrame(timetable_data_for_df, index=range(1, 13))
-
-        # Define the styling function (Blue background for courses)
-        def color_courses(val):
-            if val and str(val).strip() != "":
-                return 'background-color: rgba(28, 131, 225, 0.2); border-radius: 4px; font-weight: bold; color: inherit;'
-            return ''
-
-        # Get translated day names for styling subset
-        translated_days_list = [lang['week_' + day] for day in days_list]
-
-        # Apply Styler with FIXED Layout Logic - Reuse the same logic as non-empty case
-        # The styling logic is identical, only the data source (df_tt) is different
-        styled_df = df_tt.style.map(color_courses) \
-            .set_properties(**{
-                'height': '65px',              # Fixed row height
-                'vertical-align': 'middle',    # Center vertically
-                'text-align': 'center',        # Center horizontally
-                'white-space': 'pre-wrap',     # Wrap text inside the fixed width
-                'border': '1px solid #444' if language == 'zh' else '1px solid #ddd'
-            }) \
-            .set_table_styles([
-                # 1. CRITICAL: Force the table to stop shrinking based on content
-                {'selector': 'table', 'props': [
-                    ('width', '100%'),          # Fill container
-                    ('table-layout', 'fixed'),  # Ignore content length
-                    ('border-collapse', 'collapse')
-                ]},
-                # 2. Header Styling
-                {'selector': 'th', 'props': [
-                    ('background-color', timetable_header_bg),
-                    ('color', timetable_header_fg),
-                    ('text-align', 'center'),
-                    ('vertical-align', 'middle')
-                ]}
-            ]) \
-            .set_properties(
-                subset=translated_days_list,  # <--- ONLY apply width to Mon-Sun (using translated names)
-                **{'width': '13.5%'} # 13.5% * 7 = 94.5%, leaving 5.5% for the index
-            )
-
-        # 4. Render with container that ensures full width
-        # to_html() generates the HTML, st.markdown renders it
-        st.markdown(f"""
-<style>
-    .timetable-wrapper table {{
-        width: 100% !important;
-        table-layout: fixed !important;
-        border-collapse: collapse !important;
-    }}
-    /* First Column: Narrow (Index) */
-    .timetable-wrapper th:first-child,
-    .timetable-wrapper td:first-child {{
-        width: 6% !important;
-    }}
-    /* Other Columns: Evenly distributed */
-    .timetable-wrapper th:not(:first-child),
-    .timetable-wrapper td:not(:first-child) {{
-        width: 13.4% !important;
-    }}
-    .timetable-wrapper td, .timetable-wrapper th {{
-        text-align: center !important;
-        vertical-align: middle !important;
-    }}
-</style>
-<div class="timetable-wrapper">
-    {styled_df.to_html()}
-</div>
-""", unsafe_allow_html=True)
-        
-        # Replacing st.info with custom styled markdown div
-        message_text = "No courses selected yet." if language == "en" else "尚未选择任何课程。"
-        st.markdown(f'''
-        <div style="
-            background-color: rgba(28, 131, 225, 0.1);
-            color: rgb(0, 66, 128);
-            padding: 20px;
-            border-radius: 0.5rem;
-            border: 1px solid rgba(28, 131, 225, 0.1);
-            text-align: center;
-            margin-top: 10px;
-            margin-bottom: 10px;">
-            {message_text}
-        </div>
-        ''', unsafe_allow_html=True)
-
-        st.subheader(lang["backup_restore"])
-        selected_json = export_selected_courses_json(st.session_state.selected_courses)
-        st.download_button(
-            label=lang["export_selected_json"],
-            data=selected_json,
-            file_name="已选课程.json" if language == "zh" else "selected_courses.json",
-            mime="application/json"
-        )
-        uploaded_json = st.file_uploader(
-            label=lang["import_selected_json"],
-            type=["json"],
-            key="selected_courses_json_uploader_empty"
-        )
-        if uploaded_json is not None:
-            raw = uploaded_json.getvalue()
-            sig = hashlib.sha256(raw).hexdigest()
-            if st.session_state.get("selected_courses_import_sig") != sig:
-                st.session_state.selected_courses_import_sig = sig
-                restored, missing = import_selected_courses_json(df, raw)
-                if restored is None:
-                    st.toast(lang["import_invalid_json"], icon="⚠️")
-                else:
-                    st.session_state.selected_courses = restored
-                    st.session_state.timetable_cache = None
-                    st.session_state.timetable_courses_hash = None
-                    st.toast(f"✅ {lang['import_done']}: {len(restored)}", icon="🎉")
-                    if missing:
-                        st.toast(f"⚠️ {lang['import_partial']}: {len(missing)}", icon="⚠️")
-                    st.rerun()
-        
-        # Display credit counter immediately after timetable even when empty
-        st.subheader(f"{lang['current_credits']}: {current_credits} / {lang['max_credits']}: {max_credits}")
-        if current_credits > max_credits:
-            # Replacing st.error with custom styled markdown div (consistent with the first warning)
-            st.markdown(
-                f"""
-                <div style="
-                    background-color: rgba(255, 75, 75, 0.1);
-                    color: rgb(163, 6, 6);
-                    padding: 20px;
-                    border-radius: 0.5rem;
-                    border: 1px solid rgba(255, 75, 75, 0.2);
-                    text-align: center;
-                    margin-top: 10px;
-                    margin-bottom: 10px;">
-                    ⚠️ {lang['warning']}: {lang['credit_exceeded']}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-    
-    # Display selected courses table after timetable and credit counter
-    if st.session_state.selected_courses:
-        st.subheader(lang["selected_courses"])
-        
-        # Display each selected course as a card with cancel option
-        for idx, course in enumerate(st.session_state.selected_courses):
-            # Create a bordered container for each selected course item
-            with st.container(border=True):
-                # Split into two main sections: Information (Left) and Action (Right)
-                # Ratio 4:1 ensures the button has its own dedicated space
-                c_info, c_action = st.columns([4, 1], vertical_alignment="center")
-                
-                with c_info:
-                    # Top Row: Course Name (Bold/Large) and ID
-                    st.markdown(f"**{course['课程名']}** <span style='color:grey; font-size:0.9em'>({course['课程号']})</span>", unsafe_allow_html=True)
-                    
-                    # Bottom Row: Meta data (Dept, Credit, Teacher, Time) using distinct styling or captions
-                    # Using a single line with separators looks clean
-                    meta_text = f"教师：{course['授课教师']} &nbsp;|&nbsp; 院系：{course['院系']} &nbsp;|&nbsp; 学分：{course['参考学分']} &nbsp;|&nbsp; 时间：{course['上课时间']}"
-                    st.caption(meta_text)
-                    
-                with c_action:
-                    # The cancel button lives here, vertically centered by the column setting
-                    # use_container_width=True makes it fill the right side neatly
-                    # type="primary" distinguishes it from the select button
-                    if st.button(lang["cancel"], key=f"cancel_{idx}_{course['课程号']}", use_container_width=True, type="primary"):
-                        # Remove course from selected courses
-                        st.session_state.selected_courses.pop(idx)
-                        st.rerun()
 
 if __name__ == "__main__":
     main()

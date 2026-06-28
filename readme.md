@@ -1,4 +1,4 @@
-# 模拟选课系统（Streamlit）
+﻿# 模拟选课系统（Streamlit）
 
 一个基于 Streamlit 的“模拟选课 + 课表展示”小应用。
 [网页版](https://course.editlife.cn)(已502，后续修复)
@@ -10,12 +10,17 @@
 - 安装依赖：`pip install -r requirements.txt`
 
 ## 快速开始
-1. 准备数据（推荐）：把 `课表信息汇总.xlsx` 放到项目根目录，并转换生成 `courses.parquet`
-   - `python3 convert_data.py`
+
+建议直接在 `PKU-Course-Election/` 目录下运行（`app.py` 会用相对路径读取 `courses.parquet`）。
+
+1. 准备数据（推荐）：把 `课表信息汇总.xlsx` 放到 `PKU-Course-Election/` 目录，并转换生成 `courses.parquet`
+   - `python .\\convert_data.py`
+   - 或从仓库根目录运行：`python .\\PKU-Course-Election\\convert_data.py`
 2. 启动应用：
+   - `cd .\\PKU-Course-Election`
    - `streamlit run app.py`
 
-如果项目根目录没有 `courses.parquet`，应用启动后会提示缺失，并提供“生成示例数据”的按钮（会写出 `courses.parquet`）。
+如果 `PKU-Course-Election/` 目录没有 `courses.parquet`，应用启动后会提示缺失，并提供“生成示例数据”的按钮（会写出 `courses.parquet`）。
 
 ## 数据准备（Excel → Parquet）
 
@@ -44,7 +49,7 @@ Excel 中存在则会原样保留到 `courses.parquet`：
   - 示例：`周一1-2，周三3-4`
 
 ## 转换脚本说明（`convert_data.py`）
-运行 `python3 convert_data.py` 会：
+运行 `python convert_data.py` 会：
 - 读取 `课表信息汇总.xlsx`
 - 按 `课程号 + 班号` 分组去重
   - 如果同一门课出现多行，`修读对象` 会去重后用 `，` 连接合并
@@ -65,9 +70,9 @@ Excel 中存在则会原样保留到 `courses.parquet`：
 - 逻辑：每个关键词都必须出现，但可以出现在“课程名或老师名”任一字段中
   - 例：输入 `数据 张`，会匹配“包含 数据”且“包含 张”的课程（允许分别命中课程名/老师名）
 
-### 选课与冲突检测
-- 点击课程卡片右侧“选课”按钮加入已选列表
-- 若检测到时间冲突，会提示冲突课程名并阻止加入
+### 选课与冲突检测（新增预选池）
+- 在“选课”页点击课程卡片右侧“加入预选”，课程会进入“预选池”（此时不做冲突检测）
+- 在“预选池”页点击“加入课表”，才会执行冲突检测并加入课表
 - 冲突判定：
   - 同一天，节次区间有重叠
   - 周类型有交集（`单` vs `双` 视为不冲突；`每周` 与任意周类型视为有交集）
@@ -89,3 +94,4 @@ Excel 中存在则会原样保留到 `courses.parquet`：
 - 为节省内存，课程时间解析结果不会预先写入数据表，而是在选课时按需解析并缓存到已选课程里
 
 (readme是g老师写的)
+
