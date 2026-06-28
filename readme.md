@@ -69,6 +69,7 @@ Search:
 
 ### Preselection Pool + Timetable
 The app uses a two-step workflow:
+- Canceling a course from the timetable will move it back to the preselection pool.
 - On the **Browse Courses** page, click **Preselect** to add a course into the **preselection pool** (no conflict check at this stage).
 - On the **Preselection + Timetable** page (timetable shown at the top), click **Add to Timetable** to run conflict detection and add it to the timetable.
 
@@ -90,3 +91,5 @@ Conflict rules:
 ### Cache / Performance
 - Data loading is cached (sidebar has **Clear Cache**)
 - To save memory, time parsing is computed on-demand and cached per selected course
+
+
