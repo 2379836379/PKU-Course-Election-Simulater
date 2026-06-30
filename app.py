@@ -1,4 +1,4 @@
-﻿"""
+"""
 Virtual Course Selection Application
 
 Expected columns in courses.xlsx:
@@ -357,12 +357,17 @@ def course_matches_day_time(time_str, selected_days, start_period, end_period):
     return False
 
 
-def export_selected_courses_json(selected_courses):
+def serialize_course_refs(course_list):
+    course_id_col = "课程号"
+    class_id_col = "班号"
+    course_name_col = "课程名"
+    instructor_col = "授课教师"
+
     items = []
     seen = set()
-    for c in selected_courses:
-        course_id = str(c.get("课程号", "")).strip()
-        class_id = str(c.get("班号", "")).strip()
+    for c in course_list:
+        course_id = str(c.get(course_id_col, "")).strip()
+        class_id = str(c.get(class_id_col, "")).strip()
         if not course_id or not class_id:
             continue
         key = (course_id, class_id)
@@ -371,37 +376,41 @@ def export_selected_courses_json(selected_courses):
         seen.add(key)
         items.append(
             {
-                "课程号": course_id,
-                "班号": class_id,
-                "课程名": str(c.get("课程名", "")).strip(),
-                "授课教师": str(c.get("授课教师", "")).strip(),
+                course_id_col: course_id,
+                class_id_col: class_id,
+                course_name_col: str(c.get(course_name_col, "")).strip(),
+                instructor_col: str(c.get(instructor_col, "")).strip(),
             }
         )
-    payload = {"version": 1, "courses": items}
+    return items
+
+
+def export_selected_courses_json(selected_courses, preselected_courses=None):
+    payload = {
+        "version": 2,
+        "selected_courses": serialize_course_refs(selected_courses),
+        "preselected_courses": serialize_course_refs(preselected_courses or []),
+    }
     return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
 
 
-def save_selected_courses_json_file(selected_courses, output_path: Path = RESULT_JSON_PATH):
-    output_path.write_bytes(export_selected_courses_json(selected_courses))
+def save_selected_courses_json_file(selected_courses, preselected_courses, output_path: Path = RESULT_JSON_PATH):
+    output_path.write_bytes(export_selected_courses_json(selected_courses, preselected_courses))
 
 
-def import_selected_courses_json(df, raw_bytes):
-    try:
-        payload = json.loads(raw_bytes.decode("utf-8"))
-    except Exception:
-        return None, None
+def restore_course_refs(df, courses_list):
+    course_id_col = "课程号"
+    class_id_col = "班号"
+    time_col = "上课时间"
 
-    if isinstance(payload, list):
-        courses_list = payload
-    elif isinstance(payload, dict) and isinstance(payload.get("courses"), list):
-        courses_list = payload["courses"]
-    else:
-        return None, None
+    if not {course_id_col, class_id_col}.issubset(set(df.columns)):
+        return [], [
+            {course_id_col: x.get(course_id_col), class_id_col: x.get(class_id_col)}
+            for x in courses_list
+            if isinstance(x, dict)
+        ]
 
-    if not {"课程号", "班号"}.issubset(set(df.columns)):
-        return [], [{"课程号": x.get("课程号"), "班号": x.get("班号")} for x in courses_list if isinstance(x, dict)]
-
-    index_df = df.set_index(["课程号", "班号"], drop=False)
+    index_df = df.set_index([course_id_col, class_id_col], drop=False)
     restored = []
     missing = []
     seen = set()
@@ -409,8 +418,8 @@ def import_selected_courses_json(df, raw_bytes):
     for item in courses_list:
         if not isinstance(item, dict):
             continue
-        course_id = str(item.get("课程号", "")).strip()
-        class_id = str(item.get("班号", "")).strip()
+        course_id = str(item.get(course_id_col, "")).strip()
+        class_id = str(item.get(class_id_col, "")).strip()
         if not course_id or not class_id:
             continue
         key = (course_id, class_id)
@@ -423,22 +432,49 @@ def import_selected_courses_json(df, raw_bytes):
             if isinstance(row, pd.DataFrame):
                 row = row.iloc[0]
             course_dict = row.to_dict()
-            course_dict["_parsed_time"] = parse_time(course_dict.get("上课时间"))
+            course_dict["_parsed_time"] = parse_time(course_dict.get(time_col))
             restored.append(course_dict)
         except Exception:
-            missing.append({"课程号": course_id, "班号": class_id})
+            missing.append({course_id_col: course_id, class_id_col: class_id})
 
     return restored, missing
 
 
+def import_selected_courses_json(df, raw_bytes):
+    try:
+        payload = json.loads(raw_bytes.decode("utf-8"))
+    except Exception:
+        return None, None, None, None
+
+    if isinstance(payload, list):
+        selected_list = payload
+        preselected_list = []
+    elif isinstance(payload, dict):
+        if isinstance(payload.get("courses"), list):
+            selected_list = payload["courses"]
+            preselected_list = []
+        else:
+            selected_list = payload.get("selected_courses")
+            preselected_list = payload.get("preselected_courses", [])
+            if not isinstance(selected_list, list) or not isinstance(preselected_list, list):
+                return None, None, None, None
+    else:
+        return None, None, None, None
+
+    restored_selected, missing_selected = restore_course_refs(df, selected_list)
+    restored_preselected, missing_preselected = restore_course_refs(df, preselected_list)
+    return restored_selected, missing_selected, restored_preselected, missing_preselected
+
+
 def load_selected_courses_json_file(df, input_path: Path = RESULT_JSON_PATH):
     if not input_path.exists():
-        return [], []
+        return [], [], [], []
     try:
         raw_bytes = input_path.read_bytes()
     except Exception:
-        return None, None
+        return None, None, None, None
     return import_selected_courses_json(df, raw_bytes)
+
 
 def check_conflict(new_course, selected_courses):
     """
@@ -653,17 +689,20 @@ def main():
         st.session_state.result_json_autoloaded = False
 
     if not st.session_state.result_json_autoloaded:
-        restored, missing = load_selected_courses_json_file(df)
+        restored_selected, missing_selected, restored_preselected, missing_preselected = load_selected_courses_json_file(df)
         st.session_state.result_json_autoloaded = True
-        if restored is None:
+        if restored_selected is None:
             st.toast("Failed to read result.json")
-        elif restored:
-            st.session_state.selected_courses = restored
+        elif restored_selected or restored_preselected:
+            st.session_state.selected_courses = restored_selected
+            st.session_state.preselected_courses = restored_preselected
             st.session_state.timetable_cache = None
             st.session_state.timetable_courses_hash = None
-            st.toast(f"Loaded from result.json: {len(restored)}")
-            if missing:
-                st.toast(f"{lang['import_partial']}: {len(missing)}")
+            restored_total = len(restored_selected) + len(restored_preselected)
+            st.toast(f"Loaded from result.json: {restored_total}")
+            missing_total = len(missing_selected) + len(missing_preselected)
+            if missing_total:
+                st.toast(f"{lang['import_partial']}: {missing_total}")
 
     def course_key(course: dict) -> tuple[str, str]:
         return (str(course.get("课程号", "")).strip(), str(course.get("班号", "")).strip())
@@ -1136,23 +1175,26 @@ def main():
         st.caption(str(RESULT_JSON_PATH))
         if st.button(lang["export_selected_json"], key="save_result_json_preselect"):
             try:
-                save_selected_courses_json_file(st.session_state.selected_courses)
+                save_selected_courses_json_file(st.session_state.selected_courses, st.session_state.preselected_courses)
                 st.toast(
                     "result.json overwritten",
                 )
             except Exception as e:
                 st.toast(str(e))
         if st.button(lang["import_selected_button"], key="load_result_json_preselect"):
-            restored, missing = load_selected_courses_json_file(df)
-            if restored is None:
+            restored_selected, missing_selected, restored_preselected, missing_preselected = load_selected_courses_json_file(df)
+            if restored_selected is None:
                 st.toast(lang["import_invalid_json"])
             else:
-                st.session_state.selected_courses = restored
+                st.session_state.selected_courses = restored_selected
+                st.session_state.preselected_courses = restored_preselected
                 st.session_state.timetable_cache = None
                 st.session_state.timetable_courses_hash = None
-                st.toast(f"{lang['import_done']}: {len(restored)}")
-                if missing:
-                    st.toast(f"{lang['import_partial']}: {len(missing)}")
+                restored_total = len(restored_selected) + len(restored_preselected)
+                st.toast(f"{lang['import_done']}: {restored_total}")
+                missing_total = len(missing_selected) + len(missing_preselected)
+                if missing_total:
+                    st.toast(f"{lang['import_partial']}: {missing_total}")
                 st.rerun()
         if st.session_state.selected_courses:
             st.subheader(lang["selected_courses"])
@@ -1292,23 +1334,26 @@ def main():
         st.caption(str(RESULT_JSON_PATH))
         if st.button(lang["export_selected_json"], key="save_result_json_timetable"):
             try:
-                save_selected_courses_json_file(st.session_state.selected_courses)
+                save_selected_courses_json_file(st.session_state.selected_courses, st.session_state.preselected_courses)
                 st.toast(
                     "result.json overwritten",
                 )
             except Exception as e:
                 st.toast(str(e))
         if st.button(lang["import_selected_button"], key="load_result_json_timetable"):
-            restored, missing = load_selected_courses_json_file(df)
-            if restored is None:
+            restored_selected, missing_selected, restored_preselected, missing_preselected = load_selected_courses_json_file(df)
+            if restored_selected is None:
                 st.toast(lang["import_invalid_json"])
             else:
-                st.session_state.selected_courses = restored
+                st.session_state.selected_courses = restored_selected
+                st.session_state.preselected_courses = restored_preselected
                 st.session_state.timetable_cache = None
                 st.session_state.timetable_courses_hash = None
-                st.toast(f"{lang['import_done']}: {len(restored)}")
-                if missing:
-                    st.toast(f"{lang['import_partial']}: {len(missing)}")
+                restored_total = len(restored_selected) + len(restored_preselected)
+                st.toast(f"{lang['import_done']}: {restored_total}")
+                missing_total = len(missing_selected) + len(missing_preselected)
+                if missing_total:
+                    st.toast(f"{lang['import_partial']}: {missing_total}")
                 st.rerun()
         # Credits
         st.subheader(f"{lang['current_credits']}: {current_credits} / {lang['max_credits']}: {max_credits}")
