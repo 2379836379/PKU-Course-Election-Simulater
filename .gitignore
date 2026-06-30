@@ -92,3 +92,7 @@ coverage.xml
 .dmypy.json
 dmypy.json
 
+
+result.json
+
+

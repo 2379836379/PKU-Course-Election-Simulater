@@ -30,8 +30,8 @@ from collections import defaultdict
 import io
 import base64
 import json
-import hashlib
 import gc
+from pathlib import Path
 
 # Enable Copy-on-Write for Pandas (Memory Optimization)
 try:
@@ -40,6 +40,8 @@ except ImportError:
     pass  # Pandas version might be too old
 
 # Language dictionary for internationalization
+RESULT_JSON_PATH = Path(__file__).with_name("result.json")
+
 LANGUAGES = {
     "en": {
         "app_title": "Mock Course Selection Application",
@@ -371,6 +373,10 @@ def export_selected_courses_json(selected_courses):
     return json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
 
 
+def save_selected_courses_json_file(selected_courses, output_path: Path = RESULT_JSON_PATH):
+    output_path.write_bytes(export_selected_courses_json(selected_courses))
+
+
 def import_selected_courses_json(df, raw_bytes):
     try:
         payload = json.loads(raw_bytes.decode("utf-8"))
@@ -415,6 +421,16 @@ def import_selected_courses_json(df, raw_bytes):
             missing.append({"课程号": course_id, "班号": class_id})
 
     return restored, missing
+
+
+def load_selected_courses_json_file(df, input_path: Path = RESULT_JSON_PATH):
+    if not input_path.exists():
+        return [], []
+    try:
+        raw_bytes = input_path.read_bytes()
+    except Exception:
+        return None, None
+    return import_selected_courses_json(df, raw_bytes)
 
 def check_conflict(new_course, selected_courses):
     """
@@ -625,6 +641,21 @@ def main():
         st.session_state.timetable_cache = None
     if "timetable_courses_hash" not in st.session_state:
         st.session_state.timetable_courses_hash = None
+    if "result_json_autoloaded" not in st.session_state:
+        st.session_state.result_json_autoloaded = False
+
+    if not st.session_state.result_json_autoloaded:
+        restored, missing = load_selected_courses_json_file(df)
+        st.session_state.result_json_autoloaded = True
+        if restored is None:
+            st.toast("Failed to read result.json")
+        elif restored:
+            st.session_state.selected_courses = restored
+            st.session_state.timetable_cache = None
+            st.session_state.timetable_courses_hash = None
+            st.toast(f"Loaded from result.json: {len(restored)}")
+            if missing:
+                st.toast(f"{lang['import_partial']}: {len(missing)}")
 
     def course_key(course: dict) -> tuple[str, str]:
         return (str(course.get("课程号", "")).strip(), str(course.get("班号", "")).strip())
@@ -1072,35 +1103,27 @@ def main():
             )
 
         st.subheader(lang["backup_restore"])
-        selected_json = export_selected_courses_json(st.session_state.selected_courses)
-        st.download_button(
-            label=lang["export_selected_json"],
-            data=selected_json,
-            file_name="已选课程.json" if language == "zh" else "selected_courses.json",
-            mime="application/json",
-        )
-        uploaded_json = st.file_uploader(
-            label=lang["import_selected_json"],
-            type=["json"],
-            key="selected_courses_json_uploader",
-        )
-        if uploaded_json is not None:
-            raw = uploaded_json.getvalue()
-            sig = hashlib.sha256(raw).hexdigest()
-            if st.session_state.get("selected_courses_import_sig") != sig:
-                st.session_state.selected_courses_import_sig = sig
-                restored, missing = import_selected_courses_json(df, raw)
-                if restored is None:
-                    st.toast(lang["import_invalid_json"], icon="⚠️")
-                else:
-                    st.session_state.selected_courses = restored
-                    st.session_state.timetable_cache = None
-                    st.session_state.timetable_courses_hash = None
-                    st.toast(f"✅ {lang['import_done']}: {len(restored)}", icon="🎉")
-                    if missing:
-                        st.toast(f"⚠️ {lang['import_partial']}: {len(missing)}", icon="⚠️")
-                    st.rerun()
-
+        st.caption(str(RESULT_JSON_PATH))
+        if st.button(lang["export_selected_json"], key="save_result_json_preselect"):
+            try:
+                save_selected_courses_json_file(st.session_state.selected_courses)
+                st.toast(
+                    "result.json overwritten",
+                )
+            except Exception as e:
+                st.toast(str(e))
+        if st.button(lang["import_selected_button"], key="load_result_json_preselect"):
+            restored, missing = load_selected_courses_json_file(df)
+            if restored is None:
+                st.toast(lang["import_invalid_json"])
+            else:
+                st.session_state.selected_courses = restored
+                st.session_state.timetable_cache = None
+                st.session_state.timetable_courses_hash = None
+                st.toast(f"{lang['import_done']}: {len(restored)}")
+                if missing:
+                    st.toast(f"{lang['import_partial']}: {len(missing)}")
+                st.rerun()
         if st.session_state.selected_courses:
             st.subheader(lang["selected_courses"])
             for idx, course in enumerate(list(st.session_state.selected_courses)):
@@ -1236,35 +1259,27 @@ def main():
 
         # Backup / Restore (selected courses)
         st.subheader(lang["backup_restore"])
-        selected_json = export_selected_courses_json(st.session_state.selected_courses)
-        st.download_button(
-            label=lang["export_selected_json"],
-            data=selected_json,
-            file_name="已选课程.json" if language == "zh" else "selected_courses.json",
-            mime="application/json",
-        )
-        uploaded_json = st.file_uploader(
-            label=lang["import_selected_json"],
-            type=["json"],
-            key="selected_courses_json_uploader",
-        )
-        if uploaded_json is not None:
-            raw = uploaded_json.getvalue()
-            sig = hashlib.sha256(raw).hexdigest()
-            if st.session_state.get("selected_courses_import_sig") != sig:
-                st.session_state.selected_courses_import_sig = sig
-                restored, missing = import_selected_courses_json(df, raw)
-                if restored is None:
-                    st.toast(lang["import_invalid_json"], icon="⚠️")
-                else:
-                    st.session_state.selected_courses = restored
-                    st.session_state.timetable_cache = None
-                    st.session_state.timetable_courses_hash = None
-                    st.toast(f"✅ {lang['import_done']}: {len(restored)}", icon="🎉")
-                    if missing:
-                        st.toast(f"⚠️ {lang['import_partial']}: {len(missing)}", icon="⚠️")
-                    st.rerun()
-
+        st.caption(str(RESULT_JSON_PATH))
+        if st.button(lang["export_selected_json"], key="save_result_json_timetable"):
+            try:
+                save_selected_courses_json_file(st.session_state.selected_courses)
+                st.toast(
+                    "result.json overwritten",
+                )
+            except Exception as e:
+                st.toast(str(e))
+        if st.button(lang["import_selected_button"], key="load_result_json_timetable"):
+            restored, missing = load_selected_courses_json_file(df)
+            if restored is None:
+                st.toast(lang["import_invalid_json"])
+            else:
+                st.session_state.selected_courses = restored
+                st.session_state.timetable_cache = None
+                st.session_state.timetable_courses_hash = None
+                st.toast(f"{lang['import_done']}: {len(restored)}")
+                if missing:
+                    st.toast(f"{lang['import_partial']}: {len(missing)}")
+                st.rerun()
         # Credits
         st.subheader(f"{lang['current_credits']}: {current_credits} / {lang['max_credits']}: {max_credits}")
         if current_credits > max_credits:
