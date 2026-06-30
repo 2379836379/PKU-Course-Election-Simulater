@@ -49,9 +49,12 @@ The app parses this field for **conflict detection / timetable rendering / filte
 ## Converter (`convert_data.py`)
 Running `python convert_data.py` will:
 - Read `test.xlsx`
-- Deduplicate by `课程号 + 班号`
-  - If the same course appears in multiple rows, `修读对象` will be de-duplicated and joined by `，`
-  - Other fields use the first row in the group
+- Keep only rows where `???? = ?????`
+- Deduplicate in two passes:
+  - First by `??? + ??`
+  - Then merge rows again when `??? + ???? + ?? + ???? + ????` are all identical
+- When rows are merged, `????` will be de-duplicated and joined by `?`
+- Other fields use the first row in the merged group
 - Write `courses.parquet` (snappy compression)
 
 ## App Features (`app.py`)
