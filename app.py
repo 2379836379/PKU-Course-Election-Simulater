@@ -58,6 +58,7 @@ LANGUAGES = {
         "degree_type": "Degree Type",
         "single_degree": "Single Degree (Max 25 Credits)",
         "double_degree": "Double Degree (Max 30 Credits)",
+        "filter_by_table_type": "Filter by Table Type",
         "filter_by_department": "Filter by Course Department",
         "filter_by_weekday": "Filter by Weekday",
         "filter_time_start": "Start Period",
@@ -87,6 +88,9 @@ LANGUAGES = {
         "file_not_found": "courses.xlsx file not found. Please upload a file or generate sample data.",
         "upload_file": "Upload Excel File",
         "generate_sample": "Generate Sample Data",
+        "all_table_types": "All Table Types",
+        "undergrad_table": "Undergraduate Schedule",
+        "graduate_table": "Graduate Schedule",
         "all_departments": "All Departments",
         "all_courses": "All Courses",
         "selected_courses": "Selected Courses",
@@ -127,6 +131,7 @@ LANGUAGES = {
         "degree_type": "学位类型",
         "single_degree": "单学位（最多25学分）",
         "double_degree": "双学位（最多30学分）",
+        "filter_by_table_type": "\u6309\u8868\u683c\u7c7b\u578b\u7b5b\u9009",
         "filter_by_department": "按院系筛选",
         "filter_by_weekday": "按星期筛选",
         "filter_time_start": "起始节次",
@@ -156,6 +161,9 @@ LANGUAGES = {
         "file_not_found": "未找到 courses.xlsx 文件。请上传文件或生成示例数据。",
         "upload_file": "上传Excel文件",
         "generate_sample": "生成示例数据",
+        "all_table_types": "\u5168\u90e8\u8868\u683c\u7c7b\u578b",
+        "undergrad_table": "\u672c\u79d1\u751f\u8bfe\u8868",
+        "graduate_table": "\u7814\u7a76\u751f\u8bfe\u8868",
         "all_departments": "所有院系",
         "all_courses": "所有课程",
         "selected_courses": "已选课程",
@@ -765,7 +773,29 @@ def main():
         def reset_page_callback():
             st.session_state.current_page = 1
 
-        all_depts = [lang["all_departments"]] + sorted(filtered_df["院系"].unique())
+        table_type_col = "\u8868\u683c\u7c7b\u578b"
+        department_col = "\u9662\u7cfb"
+
+        if table_type_col in filtered_df.columns:
+            table_type_options = [
+                (lang["all_table_types"], None),
+                (lang["undergrad_table"], "\u672c\u79d1\u751f\u8bfe\u8868"),
+                (lang["graduate_table"], "\u7814\u7a76\u751f\u8bfe\u8868"),
+            ]
+            table_type_filter = st.sidebar.radio(
+                lang["filter_by_table_type"],
+                options=[label for label, _ in table_type_options],
+                index=0,
+                on_change=reset_page_callback,
+                key="table_type_filter",
+            )
+            selected_table_type = dict(table_type_options)[table_type_filter]
+            if selected_table_type is not None:
+                filtered_df = filtered_df[
+                    filtered_df[table_type_col].astype(str).str.strip() == selected_table_type
+                ]
+
+        all_depts = [lang["all_departments"]] + sorted(filtered_df[department_col].unique())
         dept_filter = st.sidebar.selectbox(
             lang["filter_by_department"],
             options=all_depts,
@@ -773,7 +803,7 @@ def main():
             key="dept_filter",
         )
         if dept_filter != lang["all_departments"]:
-            filtered_df = filtered_df[filtered_df["院系"] == dept_filter]
+            filtered_df = filtered_df[filtered_df[department_col] == dept_filter]
 
         days_list = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
         weekday_filter = st.sidebar.multiselect(

@@ -10,7 +10,6 @@ import pandas as pd
 
 
 TABLE_TYPE_COL = "\u8868\u683c\u7c7b\u578b"
-UNDERGRAD_TABLE_TYPE = "\u672c\u79d1\u751f\u8bfe\u8868"
 PRIMARY_DEDUP_KEYS = ["\u8bfe\u7a0b\u53f7", "\u73ed\u53f7"]
 SECONDARY_DEDUP_KEYS = [
     "\u8bfe\u7a0b\u540d",
@@ -53,12 +52,9 @@ def convert_excel_to_parquet(excel_file: Path, parquet_file: Path) -> bool:
             print(f"Current columns: {list(df.columns)}")
             return False
 
-        filtered_df = df[df[TABLE_TYPE_COL].astype(str).str.strip() == UNDERGRAD_TABLE_TYPE].copy()
-        print(f"Kept {len(filtered_df)} rows where {TABLE_TYPE_COL} == {UNDERGRAD_TABLE_TYPE}")
-
         print("Processing rows...")
         first_pass = (
-            filtered_df.groupby(PRIMARY_DEDUP_KEYS, sort=False, dropna=False, group_keys=False)
+            df.groupby(PRIMARY_DEDUP_KEYS, sort=False, dropna=False, group_keys=False)
             .apply(merge_course_group, include_groups=False)
             .reset_index()
         )

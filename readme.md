@@ -49,7 +49,6 @@ The app parses this field for **conflict detection / timetable rendering / filte
 ## Converter (`convert_data.py`)
 Running `python convert_data.py` will:
 - Read `test.xlsx`
-- Keep only rows where `???? = ?????`
 - Deduplicate in two passes:
   - First by `??? + ??`
   - Then merge rows again when `??? + ???? + ?? + ???? + ????` are all identical
